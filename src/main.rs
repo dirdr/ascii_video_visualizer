@@ -1,13 +1,27 @@
 extern crate ffmpeg_next as ffmpeg;
 
+use std::thread;
 use std::time::Duration;
 
 use ffmpeg::format::{input, Pixel};
 use ffmpeg::media::Type;
 use ffmpeg::software::scaling::{context::Context, flag::Flags};
 use ffmpeg::util::frame::video::Video;
+use image::{imageops::resize, GrayImage, ImageBuffer};
+use terminal_size::{Height, Width};
+
 
 fn main() -> Result<(), ffmpeg::Error> {
+    let width: u16;
+    let height: u16;
+
+    if let Some((Width(w), Height(h))) = terminal_size::terminal_size() {
+        width = w;
+        height = h;
+    } else {
+        panic!("not yet implemented");
+    }
+
     ffmpeg::init().unwrap();
 
     // open the file
@@ -35,16 +49,39 @@ fn main() -> Result<(), ffmpeg::Error> {
         Flags::BILINEAR,
     )?;
 
-    let mut images: Vec<Vec<u8>> = Vec::new();
+    let mut index = 0;
 
     let mut receive_and_process_decoded_frames =
         |decoder: &mut ffmpeg::decoder::Video| -> Result<(), ffmpeg::Error> {
             let mut decoded = Video::empty();
             while decoder.receive_frame(&mut decoded).is_ok() {
-                let mut gray_frame = Video::empty();
-                scaler.run(&decoded, &mut gray_frame)?;
-                let image: Vec<u8> = gray_frame.data(0).into();
-                images.push(image);
+                let mut frame = Video::empty();
+                scaler.run(&decoded, &mut frame)?;
+
+                let img: GrayImage =
+                    ImageBuffer::from_raw(frame.width(), frame.height(), frame.data(0).to_vec())
+                        .unwrap();
+
+                let small_img = resize(
+                    &img,
+                    width.clone().into(),
+                    height.try_into().unwrap(),
+                    image::imageops::FilterType::Nearest,
+                );
+
+                small_img.save(format!("dump{}.png", index).to_string());
+                index += 1;
+
+                for r in 0..small_img.height() {
+                    for c in 0..small_img.width() {
+                        print!(
+                            "{}",
+                            map_gray_level_to_ascii(small_img.get_pixel(c, r).0[0])
+                        );
+                    }
+                    println!();
+                }
+                thread::sleep(Duration::from_millis(16));
             }
             Ok(())
         };
@@ -55,15 +92,9 @@ fn main() -> Result<(), ffmpeg::Error> {
             receive_and_process_decoded_frames(&mut decoder)?;
         }
     }
+
     decoder.send_eof()?;
     receive_and_process_decoded_frames(&mut decoder)?;
-
-    let ascii_frames: Vec<Vec<char>> = images
-        .iter()
-        .map(|image| convert_images_to_ascii(image.clone()))
-        .collect();
-
-    print_buffer(decoder.width(), decoder.height(), ascii_frames);
 
     Ok(())
 }
@@ -75,20 +106,4 @@ fn map_gray_level_to_ascii(gray_level: u8) -> char {
     ascii_scale.chars().nth(index).unwrap()
 }
 
-fn convert_images_to_ascii(gray_value_image: Vec<u8>) -> Vec<char> {
-    gray_value_image
-        .iter()
-        .cloned()
-        .map(|e| map_gray_level_to_ascii(e))
-        .collect::<Vec<char>>()
-}
-
-fn print_buffer(width: u32, height: u32, buffer: Vec<Vec<char>>) {
-    let fps = 60;
-    let sleep_time: u64 = (1 / fps) * 1000;
-
-    for image in buffer {
-        println!("test");
-        std::thread::sleep(Duration::from_millis(sleep_time));
-    }
-}
+fn draw_image() {}

@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 ffmpeg-next = "6.0.0"
+ascii-canvas = "3.0.0"
+image = "0.24.6"
+terminal_size = "0.2.6"
