@@ -1,5 +1,5 @@
 [package]
-name = "asciiVid"
+name = "ascii_video_visualizer"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,3 +10,6 @@ ffmpeg-next = "6.0.0"
 ascii-canvas = "3.0.0"
 image = "0.24.6"
 terminal_size = "0.2.6"
+clap = { version = "4.3.9", features = ["derive"] }
+termion = "2.0.1"
+crossterm = "0.26.1"

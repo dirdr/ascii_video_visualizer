@@ -1,31 +1,65 @@
 extern crate ffmpeg_next as ffmpeg;
 
-use std::thread;
-use std::time::Duration;
+use clap::Parser;
 
+use crossterm::QueueableCommand;
 use ffmpeg::format::{input, Pixel};
 use ffmpeg::media::Type;
-use ffmpeg::software::scaling::{context::Context, flag::Flags};
+use ffmpeg::software::scaling::flag::Flags;
+use ffmpeg::software::scaling::Context;
 use ffmpeg::util::frame::video::Video;
 use image::{imageops::resize, GrayImage, ImageBuffer};
+use std::thread;
+use std::time::Duration;
 use terminal_size::{Height, Width};
 
+struct TermSize {
+    pub width: u32,
+    pub height: u32,
+}
+
+enum Mode {
+    Mean,
+    Individual
+}
+
+#[derive(Parser, Debug)]
+#[command(name = "ascii_video_visualizer")]
+#[command(author = "Adrien P. <adrien.pelfresne@gmail.com>")]
+#[command(version = "1.0")]
+#[command(about = "convert mp4 video into ascii visualisation!")]
+pub struct Cli {
+    #[arg(short, long, default_value = "drift.mp4")]
+    pub path: String,
+
+    #[arg(short, long, default_value_t = 1.0)]
+    pub scale: f64,
+
+    pub mode: String
+}
 
 fn main() -> Result<(), ffmpeg::Error> {
-    let width: u16;
-    let height: u16;
+    let cli = Cli::parse();
+    
+    let mode: Mode = match &cli.mode[..] {
+        "mean" => Mode::Mean,
+        "individual" => Mode::Individual,
+        _ => Mode:: Individual // default value
+    };
 
-    if let Some((Width(w), Height(h))) = terminal_size::terminal_size() {
-        width = w;
-        height = h;
-    } else {
-        panic!("not yet implemented");
-    }
+    let terminal_size = get_scaled_term_size(cli.scale).unwrap();
+
+    let path = format!("./resources/{}", cli.path.clone());
 
     ffmpeg::init().unwrap();
 
+
+    let mut stdout = std::io::stdout();
+
+    stdout.queue(crossterm::cursor::Hide).ok();
+
     // open the file
-    let mut ictx = input(&"./resources/drift.mp4")?;
+    let mut ictx = input(&path)?;
 
     // find the best video flux
     let input = ictx
@@ -49,54 +83,89 @@ fn main() -> Result<(), ffmpeg::Error> {
         Flags::BILINEAR,
     )?;
 
-    let mut index = 0;
-
-    let mut receive_and_process_decoded_frames =
-        |decoder: &mut ffmpeg::decoder::Video| -> Result<(), ffmpeg::Error> {
-            let mut decoded = Video::empty();
-            while decoder.receive_frame(&mut decoded).is_ok() {
-                let mut frame = Video::empty();
-                scaler.run(&decoded, &mut frame)?;
-
-                let img: GrayImage =
-                    ImageBuffer::from_raw(frame.width(), frame.height(), frame.data(0).to_vec())
-                        .unwrap();
-
-                let small_img = resize(
-                    &img,
-                    width.clone().into(),
-                    height.try_into().unwrap(),
-                    image::imageops::FilterType::Nearest,
-                );
-
-                small_img.save(format!("dump{}.png", index).to_string());
-                index += 1;
-
-                for r in 0..small_img.height() {
-                    for c in 0..small_img.width() {
-                        print!(
-                            "{}",
-                            map_gray_level_to_ascii(small_img.get_pixel(c, r).0[0])
-                        );
-                    }
-                    println!();
-                }
-                thread::sleep(Duration::from_millis(16));
-            }
-            Ok(())
-        };
+    let mut frame: Vec<Vec<char>> =
+        vec![vec![' '; terminal_size.width as usize]; terminal_size.height as usize];
 
     for (stream, packet) in ictx.packets() {
         if stream.index() == video_stream_index {
             decoder.send_packet(&packet)?;
-            receive_and_process_decoded_frames(&mut decoder)?;
+            receive_and_process_decoded_frames(
+                &mut decoder,
+                &mut scaler,
+                &terminal_size,
+                &mut frame,
+            )?;
         }
     }
 
     decoder.send_eof()?;
-    receive_and_process_decoded_frames(&mut decoder)?;
+    receive_and_process_decoded_frames(&mut decoder, &mut scaler, &terminal_size, &mut frame)?;
 
+
+    stdout.queue(crossterm::cursor::Hide).ok();
     Ok(())
+}
+
+fn receive_and_process_decoded_frames(
+    decoder: &mut ffmpeg::decoder::Video,
+    scaler: &mut Context,
+    terminal_size: &TermSize,
+    frame_vec: &mut Vec<Vec<char>>,
+) -> Result<(), ffmpeg::Error> {
+    let mut decoded = Video::empty();
+    while decoder.receive_frame(&mut decoded).is_ok() {
+        let mut frame = Video::empty();
+        let mut new_frame_vec: Vec<Vec<char>> =
+            vec![vec![' '; terminal_size.width as usize]; terminal_size.height as usize];
+
+        scaler.run(&decoded, &mut frame)?;
+
+        let img: GrayImage =
+            ImageBuffer::from_raw(frame.width(), frame.height(), frame.data(0).to_vec()).unwrap();
+
+        let small_img = resize(
+            &img,
+            terminal_size.width.clone().into(),
+            terminal_size.height.try_into().unwrap(),
+            image::imageops::FilterType::Nearest,
+        );
+
+        for r in 0..terminal_size.height as u32 {
+            for c in 0..terminal_size.width as u32 {
+                let char = map_gray_level_to_ascii(small_img.get_pixel(c, r).0[0]);
+                new_frame_vec[r as usize][c as usize] = char;
+                let old_char = frame_vec[r as usize][c as usize];
+                if char != old_char {
+                    print!(
+                        "{}{}",
+                        termion::cursor::Goto((c + 1) as u16, (r + 1) as u16),
+                        char
+                    );
+                }
+            }
+        }
+
+        std::mem::swap(frame_vec, &mut new_frame_vec);
+        thread::sleep(Duration::from_millis(16));
+    }
+    Ok(())
+}
+
+fn get_scaled_term_size(scale: f64) -> Option<TermSize> {
+    if let Some((Width(w), Height(h))) = terminal_size::terminal_size() {
+        return Some(TermSize {
+            width: (w as f64 * scale) as u32,
+            height: (h as f64 * scale) as u32,
+        });
+    }
+    None
+}
+
+fn map_gray_level_to_ascii(gray_level: u8) -> char {
+    let ascii_scale = " .:-=+*#%@";
+    let gray_scale = gray_level as f32 / 255.0;
+    let index = (gray_scale * (ascii_scale.len() - 1) as f32).round() as usize;
+    ascii_scale.chars().nth(index).unwrap()
 }
 
 fn map_gray_level_to_ascii(gray_level: u8) -> char {
