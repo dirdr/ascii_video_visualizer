@@ -125,8 +125,8 @@ fn receive_and_process_decoded_frames(
 
         let small_img = resize(
             &img,
-            terminal_size.width.clone().into(),
-            terminal_size.height.try_into().unwrap(),
+            terminal_size.width.clone(),
+            terminal_size.height.clone(),
             image::imageops::FilterType::Nearest,
         );
 
@@ -167,12 +167,3 @@ fn map_gray_level_to_ascii(gray_level: u8) -> char {
     let index = (gray_scale * (ascii_scale.len() - 1) as f32).round() as usize;
     ascii_scale.chars().nth(index).unwrap()
 }
-
-fn map_gray_level_to_ascii(gray_level: u8) -> char {
-    let ascii_scale = " .:-=+*#%@";
-    let gray_scale = gray_level as f32 / 255.0;
-    let index = (gray_scale * (ascii_scale.len() - 1) as f32).round() as usize;
-    ascii_scale.chars().nth(index).unwrap()
-}
-
-fn draw_image() {}
