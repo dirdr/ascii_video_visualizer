@@ -32,9 +32,6 @@ pub struct Cli {
     #[arg(short, long, default_value = "drift.mp4")]
     pub path: String,
 
-    #[arg(short, long, default_value_t = 1.0)]
-    pub scale: f64,
-
     pub mode: String
 }
 
@@ -154,8 +151,8 @@ fn receive_and_process_decoded_frames(
 fn get_scaled_term_size(scale: f64) -> Option<TermSize> {
     if let Some((Width(w), Height(h))) = terminal_size::terminal_size() {
         return Some(TermSize {
-            width: (w as f64 * scale) as u32,
-            height: (h as f64 * scale) as u32,
+            width: w as u32,
+            height: h as u32,
         });
     }
     None
