@@ -1,6 +1,6 @@
 # Ascii video visualizer
 ## Install
-**[Ffmpeg](https://ffmpeg.org/download.html) is mandatory to run this program**
+**[Ffmpeg](https://ffmpeg.org/download.html) is required to run this program**
 
 Clone the project :
 ```sh
