@@ -34,10 +34,7 @@ pub enum Full {}
 
 impl AsciiFramePoint {
     pub fn new(coordinate: Coordinate, char: char) -> Self {
-        Self {
-            coordinate,
-            char,
-        }
+        Self { coordinate, char }
     }
 }
 
@@ -65,7 +62,7 @@ impl AsciiFrame {
         Self {
             point_buffer: Vec::new(),
             terminal_size,
-            state: Default::default()
+            state: Default::default(),
         }
     }
 }
