@@ -8,14 +8,18 @@ mod player;
 mod term;
 mod utils;
 
-use std::{collections::VecDeque, sync::{Mutex, Arc}, thread, time::Duration};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 
 use clap::Parser;
 
 use crossterm::QueueableCommand;
 use decoder::DecoderWrapper;
 use frame::Frame;
-
 
 #[derive(Parser, Debug)]
 #[command(name = "ascii_video_visualizer")]
@@ -49,15 +53,14 @@ fn main() -> Result<(), ffmpeg::Error> {
     decoder.start();
 
     let frames = decoder.get_frames();
-    thread::spawn(move || {
-        loop {
-            let len = frames.lock().unwrap().len();
-            println!("Frames read: {}", len);
-            thread::sleep(Duration::from_secs(1));
-        }
+    // fait spawn le main thread qui va récuperer toutes les secondses les frames lu par l'autre
+    // thread qui decode la video
+    thread::spawn(move || loop {
+        let len = frames.lock().unwrap().len();
+        println!("Frames read: {}", len);
+        thread::sleep(Duration::from_secs(1));
     });
 
-    // Attend indéfiniment
     loop {
         thread::sleep(Duration::from_secs(1));
     }
