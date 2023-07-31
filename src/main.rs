@@ -10,14 +10,11 @@ mod utils;
 
 use std::{
     collections::VecDeque,
-    sync::{Arc, Mutex},
-    thread,
-    time::Duration,
+    sync::{Arc, Condvar, Mutex},
 };
 
 use clap::Parser;
 
-use crossterm::QueueableCommand;
 use decoder::DecoderWrapper;
 use frame::Frame;
 
@@ -32,6 +29,20 @@ pub struct Cli {
     // pub mode: String,
 }
 
+pub struct SharedQueue {
+    queue: Mutex<VecDeque<Frame>>,
+    condvar: Condvar,
+}
+
+impl SharedQueue {
+    pub fn new() -> Self {
+        Self {
+            queue: Mutex::new(VecDeque::new()),
+            condvar: Condvar::new(),
+        }
+    }
+}
+
 fn main() -> Result<(), ffmpeg::Error> {
     let cli = Cli::parse();
 
@@ -42,28 +53,10 @@ fn main() -> Result<(), ffmpeg::Error> {
     // };
 
     let path = format!("./resources/{}", cli.path.clone());
-
-    ffmpeg::init()?;
-
-    let mut stdout = std::io::stdout();
-    stdout.queue(crossterm::cursor::Hide).ok();
-
-    let shared_queue: Arc<Mutex<VecDeque<Frame>>> = Arc::new(Mutex::new(VecDeque::new()));
+    let shared_queue = Arc::new(SharedQueue::new());
     let decoder = DecoderWrapper::new(&path, shared_queue);
     decoder.start();
-
     let frames = decoder.get_frames();
-    // fait spawn le main thread qui va récuperer toutes les secondses les frames lu par l'autre
-    // thread qui decode la video
-    thread::spawn(move || loop {
-        let len = frames.lock().unwrap().len();
-        println!("Frames read: {}", len);
-        thread::sleep(Duration::from_secs(1));
-    });
 
-    loop {
-        thread::sleep(Duration::from_secs(1));
-    }
-    stdout.queue(crossterm::cursor::Show).ok();
     Ok(())
 }

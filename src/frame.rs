@@ -24,10 +24,12 @@ pub struct AsciiFramePoint {
     pub char: char,
 }
 
+#[derive(Clone)]
 pub struct Frame {
     pub original_frame: Video,
     pub terminal_size: TermSize,
 }
+
 
 pub enum Empty {}
 pub enum Full {}

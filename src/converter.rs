@@ -49,6 +49,7 @@ impl Mode for Individual {
 
 /// a converter takes `Frame` as an input
 /// and convert them into `AsciiFrame` depending on the generic `Mode`
+/// this process is done in a separate thread.
 // pub struct Converter<M: Mode> {
 //     mode: M,
 // }
@@ -57,7 +58,9 @@ impl Mode for Individual {
 //
 // impl Converter<Individual> {}
 //
-// impl<M: Mode> Converter<M> {}
+impl<M: Mode> Converter<M> {
+
+}
 
 fn map_gray_level_to_ascii(gray_level: u8) -> char {
     let ascii_scale = " .:-=+*#%@";

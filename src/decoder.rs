@@ -9,14 +9,15 @@ use ffmpeg::software::scaling::Context;
 use ffmpeg::util::frame::video::Video;
 
 use crate::frame::Frame;
+use crate::SharedQueue;
 
 pub struct DecoderWrapper {
     path: String,
-    frame_queue: Arc<Mutex<VecDeque<Frame>>>,
+    frame_queue: Arc<SharedQueue>,
 }
 
 impl DecoderWrapper {
-    pub fn new(path: &str, frame_queue: Arc<Mutex<VecDeque<Frame>>>) -> Self {
+    pub fn new(path: &str, frame_queue: Arc<SharedQueue>) -> Self {
         Self {
             path: path.to_owned(),
             frame_queue,
@@ -64,7 +65,7 @@ impl DecoderWrapper {
                         let mut scaled = Video::empty();
                         scaler.run(&decoded, &mut scaled).unwrap();
                         let frame = Frame::new(scaled);
-                        let mut frame_queue = frame_queue.lock().unwrap();
+                        let mut frame_queue = frame_queue.queue.lock().unwrap();
                         frame_queue.push_back(frame);
                     }
                 }
@@ -73,7 +74,7 @@ impl DecoderWrapper {
         });
     }
 
-    pub fn get_frames(&self) -> Arc<Mutex<VecDeque<Frame>>> {
+    pub fn get_frames(&self) -> Arc<SharedQueue> {
         Arc::clone(&self.frame_queue)
     }
 }
