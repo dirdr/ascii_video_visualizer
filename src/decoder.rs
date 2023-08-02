@@ -9,15 +9,15 @@ use ffmpeg::software::scaling::Context;
 use ffmpeg::util::frame::video::Video;
 
 use crate::frame::Frame;
-use crate::SharedQueue;
+use crate::SharedFrameQueue;
 
 pub struct DecoderWrapper {
     path: String,
-    frame_queue: Arc<SharedQueue>,
+    frame_queue: Arc<SharedFrameQueue>,
 }
 
 impl DecoderWrapper {
-    pub fn new(path: &str, frame_queue: Arc<SharedQueue>) -> Self {
+    pub fn new(path: &str, frame_queue: Arc<SharedFrameQueue>) -> Self {
         Self {
             path: path.to_owned(),
             frame_queue,
@@ -74,7 +74,7 @@ impl DecoderWrapper {
         });
     }
 
-    pub fn get_frames(&self) -> Arc<SharedQueue> {
+    pub fn get_frames(&self) -> Arc<SharedFrameQueue> {
         Arc::clone(&self.frame_queue)
     }
 }

@@ -1,25 +1,34 @@
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+};
+
 use crate::{
     frame::{AsciiFrame, AsciiFramePoint, Frame},
     utils::Coordinate,
+    SharedAsciiFrameQueue, SharedFrameQueue,
 };
 
 use image::{imageops::resize, GrayImage, ImageBuffer};
 
-pub enum Mean {}
-pub enum Individual {}
+#[derive(Clone)]
+struct Mean {}
 
-pub trait Mode {
-    fn convert_frame(&self) -> AsciiFrame;
+#[derive(Clone)]
+struct Individual {}
+
+pub trait ConverterType {
+    fn convert_frame(&self, frame: Frame) -> AsciiFrame;
 }
 
-impl Mode for Mean {
-    fn convert_frame(&self) -> AsciiFrame {
+impl ConverterType for Mean {
+    fn convert_frame(&self, frame: Frame) -> AsciiFrame {
         todo!()
     }
 }
 
-impl Mode for Individual {
-    fn convert_frame(&self) -> AsciiFrame {
+impl ConverterType for Individual {
+    fn convert_frame(&self, frame: Frame) -> AsciiFrame {
         todo!()
         // let img: GrayImage = ImageBuffer::from_raw(
         //     frame.original_frame.width(),
@@ -50,16 +59,39 @@ impl Mode for Individual {
 /// a converter takes `Frame` as an input
 /// and convert them into `AsciiFrame` depending on the generic `Mode`
 /// this process is done in a separate thread.
-// pub struct Converter<M: Mode> {
-//     mode: M,
-// }
+pub struct Converter<M: ConverterType> {
+    frame_queue: Arc<SharedFrameQueue>,
+    ascii_frame_queue: Arc<SharedAsciiFrameQueue>,
+    converter_impl: Arc<M>,
+}
 
 // impl Converter<Mean> {}
 //
 // impl Converter<Individual> {}
 //
-impl<M: Mode> Converter<M> {
-
+impl<M: ConverterType + std::marker::Send + std::marker::Sync + 'static> Converter<M> {
+    pub fn start(&mut self) {
+        let frame_queue = Arc::clone(&self.frame_queue);
+        let ascii_frame_queue = Arc::clone(&self.ascii_frame_queue);
+        let converter_impl = Arc::clone(&self.converter_impl);
+        thread::spawn(move || {
+            let mut frame_queue = frame_queue.queue.lock().unwrap();
+            let mut ascii_frame_queue = ascii_frame_queue.queue.lock().unwrap();
+            loop {
+                match frame_queue.pop_front() {
+                    Some(frame) => {
+                        let converted = converter_impl.convert_frame(frame.clone());
+                        ascii_frame_queue.push_back(converted.clone());
+                    }
+                    None => {
+                        // wait at least 'delta' to print at FPS rate
+                        // thread::sleep(Duration::from_millis(delta));
+                        // queue_guard = frame_queue.condvar.wait(queue_guard).unwrap()
+                    }
+                }
+            }
+        });
+    }
 }
 
 fn map_gray_level_to_ascii(gray_level: u8) -> char {

@@ -5,18 +5,18 @@ use std::{
 
 use crossterm::QueueableCommand;
 
-use crate::{frame::{AsciiFrame, Frame}, SharedQueue};
+use crate::{frame::{Frame, AsciiFrame}, SharedAsciiFrameQueue};
 
 /// The `Player` struct output his content
 /// into stdout to be visualized
 pub struct Player {
-    frame_queue: Arc<SharedQueue>,
+    frame_queue: Arc<SharedAsciiFrameQueue>,
     delta: u64,
     stdout: Stdout
 }
 
 impl Player {
-    pub fn new(frame_queue: Arc<SharedQueue>, frame_rate: usize) -> Self {
+    pub fn new(frame_queue: Arc<SharedAsciiFrameQueue>, frame_rate: usize) -> Self {
         Self {
             frame_queue,
             delta: ((1 / frame_rate) * 1000) as u64,
@@ -44,7 +44,7 @@ impl Player {
         });
     } 
 
-    pub fn print_frame(frame: Frame) {
+    pub fn print_frame(frame: AsciiFrame) {
 
     }
 

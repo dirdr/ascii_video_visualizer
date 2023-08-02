@@ -16,7 +16,7 @@ use std::{
 use clap::Parser;
 
 use decoder::DecoderWrapper;
-use frame::Frame;
+use frame::{Frame, AsciiFrame};
 
 #[derive(Parser, Debug)]
 #[command(name = "ascii_video_visualizer")]
@@ -29,12 +29,21 @@ pub struct Cli {
     // pub mode: String,
 }
 
-pub struct SharedQueue {
+/// SharedFrameQueue will be shared between a Decoder (Producer) and the Converter (consumer)
+pub struct SharedFrameQueue {
     queue: Mutex<VecDeque<Frame>>,
     condvar: Condvar,
 }
 
-impl SharedQueue {
+
+/// SharedFrameQueue will be shared between a Converter (Producer) and a generic output (consumer).
+/// the generic can be a Encoder, or a Player
+pub struct SharedAsciiFrameQueue {
+    queue: Mutex<VecDeque<AsciiFrame>>,
+    condvar: Condvar,
+}
+
+impl SharedFrameQueue {
     pub fn new() -> Self {
         Self {
             queue: Mutex::new(VecDeque::new()),
@@ -53,7 +62,7 @@ fn main() -> Result<(), ffmpeg::Error> {
     // };
 
     let path = format!("./resources/{}", cli.path.clone());
-    let shared_queue = Arc::new(SharedQueue::new());
+    let shared_queue = Arc::new(SharedFrameQueue::new());
     let decoder = DecoderWrapper::new(&path, shared_queue);
     decoder.start();
     let frames = decoder.get_frames();

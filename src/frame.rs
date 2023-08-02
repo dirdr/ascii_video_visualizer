@@ -9,8 +9,8 @@ pub enum PointState {
     Same,
 }
 
+#[derive(Clone)]
 pub struct AsciiFrame<State = Empty> {
-    point_buffer: Vec<AsciiFramePoint>,
     terminal_size: TermSize,
     state: std::marker::PhantomData<State>,
 }
@@ -31,7 +31,10 @@ pub struct Frame {
 }
 
 
+#[derive(Clone)]
 pub enum Empty {}
+
+#[derive(Clone)]
 pub enum Full {}
 
 impl AsciiFramePoint {
@@ -62,7 +65,6 @@ impl AsciiFrame {
     pub fn new() -> AsciiFrame<Empty> {
         let terminal_size = crate::term::get().unwrap(); //TODO update needed!
         Self {
-            point_buffer: Vec::new(),
             terminal_size,
             state: Default::default(),
         }
