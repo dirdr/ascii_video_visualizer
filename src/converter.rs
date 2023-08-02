@@ -69,7 +69,7 @@ pub struct Converter<M: ConverterType> {
 //
 // impl Converter<Individual> {}
 //
-impl<M: ConverterType + std::marker::Send + std::marker::Sync + 'static> Converter<M> {
+impl<M: ConverterType + Send + Sync + 'static> Converter<M> {
     pub fn start(&mut self) {
         let frame_queue = Arc::clone(&self.frame_queue);
         let ascii_frame_queue = Arc::clone(&self.ascii_frame_queue);
