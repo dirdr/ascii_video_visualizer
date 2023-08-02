@@ -30,7 +30,6 @@ pub struct Frame {
     pub terminal_size: TermSize,
 }
 
-
 #[derive(Clone)]
 pub enum Empty {}
 

@@ -1,18 +1,24 @@
 use std::{
     collections::VecDeque,
-    sync::{Arc, Mutex}, io::Stdout, thread, time::Duration,
+    io::Stdout,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
 };
 
 use crossterm::QueueableCommand;
 
-use crate::{frame::{Frame, AsciiFrame}, SharedAsciiFrameQueue};
+use crate::{
+    frame::{AsciiFrame, Frame},
+    SharedAsciiFrameQueue,
+};
 
 /// The `Player` struct output his content
 /// into stdout to be visualized
 pub struct Player {
     frame_queue: Arc<SharedAsciiFrameQueue>,
     delta: u64,
-    stdout: Stdout
+    stdout: Stdout,
 }
 
 impl Player {
@@ -20,7 +26,7 @@ impl Player {
         Self {
             frame_queue,
             delta: ((1 / frame_rate) * 1000) as u64,
-            stdout: std::io::stdout()
+            stdout: std::io::stdout(),
         }
     }
 
@@ -40,13 +46,10 @@ impl Player {
                     }
                 }
             }
-
         });
-    } 
-
-    pub fn print_frame(frame: AsciiFrame) {
-
     }
+
+    pub fn print_frame(frame: AsciiFrame) {}
 
     pub fn stop(&mut self) {
         self.stdout.queue(crossterm::cursor::Show).ok();

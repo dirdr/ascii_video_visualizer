@@ -14,7 +14,7 @@ use image::{imageops::resize, GrayImage, ImageBuffer};
 #[derive(Clone)]
 struct Mean {}
 
-#[derive(Clone)]
+#[derive(Clone)
 struct Individual {}
 
 pub trait ConverterType {

@@ -16,7 +16,7 @@ use std::{
 use clap::Parser;
 
 use decoder::DecoderWrapper;
-use frame::{Frame, AsciiFrame};
+use frame::{AsciiFrame, Frame};
 
 #[derive(Parser, Debug)]
 #[command(name = "ascii_video_visualizer")]
@@ -34,7 +34,6 @@ pub struct SharedFrameQueue {
     queue: Mutex<VecDeque<Frame>>,
     condvar: Condvar,
 }
-
 
 /// SharedFrameQueue will be shared between a Converter (Producer) and a generic output (consumer).
 /// the generic can be a Encoder, or a Player
