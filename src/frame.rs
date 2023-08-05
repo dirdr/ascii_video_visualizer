@@ -1,34 +1,8 @@
+use std::marker::PhantomData;
+
 use ffmpeg::util::frame::Video;
 
-use crate::{term::TermSize, utils::Coordinate};
-
 extern crate ffmpeg_next as ffmpeg;
-
-pub enum PointState {
-    Changed,
-    Same,
-}
-
-#[derive(Clone)]
-pub struct AsciiFrame<State = Empty> {
-    terminal_size: TermSize,
-    state: std::marker::PhantomData<State>,
-}
-
-/// A single point on the AsciiFrame (an ASCII character),
-/// contains additional information about the state of this point
-/// changed is true if the character was not the same the frame before,
-/// else false
-pub struct AsciiFramePoint {
-    pub coordinate: Coordinate,
-    pub char: char,
-}
-
-#[derive(Clone)]
-pub struct Frame {
-    pub original_frame: Video,
-    pub terminal_size: TermSize,
-}
 
 #[derive(Clone)]
 pub enum Empty {}
@@ -36,25 +10,30 @@ pub enum Empty {}
 #[derive(Clone)]
 pub enum Full {}
 
-impl AsciiFramePoint {
-    pub fn new(coordinate: Coordinate, char: char) -> Self {
-        Self { coordinate, char }
-    }
+/// width and height are expressed as numeber of character
+#[derive(Clone)]
+pub struct AsciiFrame<State = Empty> {
+    char_buffer: Vec<Vec<char>>,
+    state: std::marker::PhantomData<State>,
+}
+
+#[derive(Clone)]
+pub struct Frame {
+    pub frame: Video,
 }
 
 impl Frame {
     pub fn new(frame: ffmpeg::util::frame::Video) -> Frame {
-        let terminal_size = crate::term::get().unwrap(); //TODO update needed!
-        Frame {
-            original_frame: frame,
-            terminal_size,
-        }
+        Frame { frame }
     }
 }
 
 impl AsciiFrame<Empty> {
-    pub fn send_char_buffer(&self, char_buffer: Vec<AsciiFramePoint>) -> AsciiFrame<Full> {
-        todo!()
+    pub fn send_char_buffer(&self, char_buffer: Vec<Vec<char>>) -> AsciiFrame<Full> {
+        AsciiFrame {
+            char_buffer,
+            state: PhantomData,
+        }
     }
 }
 
@@ -62,10 +41,9 @@ impl AsciiFrame<Full> {}
 
 impl AsciiFrame {
     pub fn new() -> AsciiFrame<Empty> {
-        let terminal_size = crate::term::get().unwrap(); //TODO update needed!
         Self {
-            terminal_size,
-            state: Default::default(),
+            char_buffer: vec![vec![]],
+            state: PhantomData,
         }
     }
 }

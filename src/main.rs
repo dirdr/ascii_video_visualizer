@@ -7,6 +7,7 @@ mod frame;
 mod player;
 mod term;
 mod utils;
+mod ascii_set;
 
 use std::{
     collections::VecDeque,
