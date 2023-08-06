@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::thread::{self, JoinHandle};
 
 use ffmpeg::format::{input, Pixel};
 use ffmpeg::media::Type;
@@ -24,7 +24,7 @@ impl DecoderWrapper {
         }
     }
 
-    pub fn start(&self) {
+    pub fn start(&self) -> JoinHandle<()> {
         let frame_queue = Arc::clone(&self.frame_queue);
         let path = self.path.clone();
 
@@ -71,7 +71,7 @@ impl DecoderWrapper {
                 }
             }
             decoder.send_eof().unwrap();
-        });
+        })
     }
 
     pub fn get_frames(&self) -> Arc<SharedFrameQueue> {

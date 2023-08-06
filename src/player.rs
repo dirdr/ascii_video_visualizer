@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     io::Stdout,
     sync::{Arc, Mutex},
-    thread,
+    thread::{self, JoinHandle},
     time::Duration,
 };
 
@@ -16,7 +16,7 @@ use crate::{
 /// The `Player` struct output his content
 /// into stdout to be visualized
 pub struct Player {
-    frame_queue: Arc<SharedAsciiFrameQueue>,
+    ascii_frame_queue: Arc<SharedAsciiFrameQueue>,
     delta: u64,
     stdout: Stdout,
 }
@@ -24,15 +24,15 @@ pub struct Player {
 impl Player {
     pub fn new(frame_queue: Arc<SharedAsciiFrameQueue>, frame_rate: usize) -> Self {
         Self {
-            frame_queue,
+            ascii_frame_queue: frame_queue,
             delta: ((1 / frame_rate) * 1000) as u64,
             stdout: std::io::stdout(),
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&mut self) -> JoinHandle<()> {
         self.stdout.queue(crossterm::cursor::Hide).ok();
-        let queue_clone = Arc::clone(&self.frame_queue);
+        let queue_clone = Arc::clone(&self.ascii_frame_queue);
         let delta = self.delta.clone();
         thread::spawn(move || {
             let mut queue_guard = queue_clone.queue.lock().unwrap();
@@ -46,7 +46,7 @@ impl Player {
                     }
                 }
             }
-        });
+        })
     }
 
     pub fn print_frame(frame: AsciiFrame) {}
