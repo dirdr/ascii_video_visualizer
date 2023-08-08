@@ -46,6 +46,7 @@ impl Converter {
                     Some(frame) => {
                         let converted = Self::convert_frame(frame.clone(), set);
                         ascii_frame_queue_guard.push_back(converted.clone());
+                        ascii_frame_queue.condvar.notify_all();
                     }
                     None => {
                         // block the thread until a frame is avaible in the queue

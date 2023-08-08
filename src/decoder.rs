@@ -65,8 +65,10 @@ impl DecoderWrapper {
                         let mut scaled = Video::empty();
                         scaler.run(&decoded, &mut scaled).unwrap();
                         let frame = Frame::new(scaled);
-                        let mut frame_queue = frame_queue.queue.lock().unwrap();
-                        frame_queue.push_back(frame);
+                        let mut frame_queue_guard = frame_queue.queue.lock().unwrap();
+                        frame_queue_guard.push_back(frame);
+                        frame_queue.condvar.notify_all();
+
                     }
                 }
             }
