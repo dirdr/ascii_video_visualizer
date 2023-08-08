@@ -37,7 +37,11 @@ impl AsciiFrame<Empty> {
     }
 }
 
-impl AsciiFrame<Full> {}
+impl AsciiFrame<Full> {
+    pub fn get_buffer(&self) -> Vec<Vec<char>> {
+        self.char_buffer.clone()
+    }
+}
 
 impl AsciiFrame {
     pub fn new() -> AsciiFrame<Empty> {

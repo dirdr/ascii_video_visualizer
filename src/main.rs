@@ -18,7 +18,7 @@ use clap::Parser;
 
 use converter::Converter;
 use decoder::DecoderWrapper;
-use frame::{AsciiFrame, Frame};
+use frame::{AsciiFrame, Frame, Full};
 use player::Player;
 
 #[derive(Parser, Debug)]
@@ -44,7 +44,7 @@ pub struct SharedFrameQueue {
 /// SharedFrameQueue will be shared between a Converter (Producer) and a generic output (consumer).
 /// the generic can be a Encoder, or a Player
 pub struct SharedAsciiFrameQueue {
-    queue: Mutex<VecDeque<AsciiFrame>>,
+    queue: Mutex<VecDeque<AsciiFrame<Full>>>,
     condvar: Condvar,
 }
 
@@ -97,10 +97,6 @@ fn main() -> Result<(), ffmpeg::Error> {
 
         thread::sleep(Duration::from_secs(1));
     }
-
-    // for handle in handles {
-    //     handle.join().unwrap();
-    // }
     //
     // print!("{}", converter);
     //
