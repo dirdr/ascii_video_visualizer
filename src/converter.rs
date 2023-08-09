@@ -9,7 +9,7 @@ use crate::{
     term, SharedAsciiFrameQueue, SharedFrameQueue,
 };
 
-use image::{GrayImage, ImageBuffer};
+use image::{GrayImage, ImageBuffer, ImageResult, RgbImage};
 
 /// a converter takes `Frame` as an input
 /// and convert them into `AsciiFrame` depending on the generic `Mode`
@@ -37,12 +37,13 @@ impl Converter {
         let frame_queue = Arc::clone(&self.frame_queue);
         let ascii_frame_queue = Arc::clone(&self.ascii_frame_queue);
         let set = self.set;
+        let mut index = 0;
         thread::spawn(move || {
             let mut frame_queue_guard = frame_queue.queue.lock().unwrap();
             loop {
                 match frame_queue_guard.pop_front() {
                     Some(frame) => {
-                        let converted = Self::convert_frame(frame.clone(), set);
+                        let converted = Self::convert_frame(frame.clone(), set, &mut index);
                         let mut ascii_frame_queue_guard = ascii_frame_queue.queue.lock().unwrap();
                         ascii_frame_queue_guard.push_back(converted.clone());
                         ascii_frame_queue.condvar.notify_all();
@@ -56,7 +57,7 @@ impl Converter {
         })
     }
 
-    fn convert_frame(frame: Frame, charset: &'static str) -> AsciiFrame<Full> {
+    fn convert_frame(frame: Frame, charset: &'static str, index: &mut i32) -> AsciiFrame<Full> {
         // TODO faire les deux modes (Sampling et Resizing)
         let terminal_size = term::get().unwrap();
 
@@ -80,8 +81,12 @@ impl Converter {
             &img,
             terminal_size.width,
             terminal_size.height, // because an ascii character is in a rectangular shape
+            //frame.frame.width(),
+            // frame.frame.height(),
             image::imageops::FilterType::Nearest,
         );
+
+        Self::save_frame(resized_image.clone(), index);
 
         let mut char_buffer = vec![vec![]];
         for y in 0..resized_image.height() {
@@ -100,6 +105,12 @@ impl Converter {
         let gray_scale = (luminance as f64) / 255.0;
         let index = (gray_scale * (charset.len() - 1) as f64).round() as usize;
         charset.chars().nth(index).unwrap()
+    }
+
+    fn save_frame(frame: GrayImage, index: &mut i32) -> ImageResult<()> {
+        frame.save(format!("resources/frame_dump/frame{index}.png"))?;
+        *index += 1;
+        Ok(())
     }
 }
 

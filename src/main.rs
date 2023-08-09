@@ -32,7 +32,7 @@ use player::Player;
 #[command(version = "1.0")]
 #[command(about = "convert mp4 video into ascii visualisation!")]
 pub struct Cli {
-    #[arg(short, long, default_value = "cat.mp4")]
+    #[arg(short, long, default_value = "maths.mp4")]
     pub path: String,
     // pub mode: String,
 }
@@ -92,9 +92,9 @@ fn main() -> Result<(), ffmpeg::Error> {
     let mut converter = Converter::new(
         Arc::clone(&shared_frame_queue),
         Arc::clone(&shared_ascii_frame_queue),
-        ascii_set::LOW,
+        ascii_set::BASIC,
     );
-    let mut player = Player::new(Arc::clone(&shared_ascii_frame_queue), 24);
+    let mut player = Player::new(Arc::clone(&shared_ascii_frame_queue), 60);
     let mut handles = vec![];
     handles.push(decoder.start());
     handles.push(converter.start());

@@ -14,3 +14,4 @@ Cargo.lock
 *.pdbtarget
 
 .DS_STORE
+./resources/frame_dump/*
