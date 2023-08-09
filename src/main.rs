@@ -1,4 +1,5 @@
 extern crate ffmpeg_next as ffmpeg;
+extern crate pretty_env_logger;
 
 mod ascii_set;
 mod converter;
@@ -7,11 +8,15 @@ mod encoder;
 mod frame;
 mod player;
 mod term;
-mod utils;
+
+#[macro_use]
+extern crate log;
 
 use std::{
     collections::VecDeque,
-    sync::{Arc, Condvar, Mutex}, thread, time::Duration,
+    sync::{Arc, Condvar, Mutex},
+    thread,
+    time::Duration,
 };
 
 use clap::Parser;
@@ -27,7 +32,7 @@ use player::Player;
 #[command(version = "1.0")]
 #[command(about = "convert mp4 video into ascii visualisation!")]
 pub struct Cli {
-    #[arg(short, long, default_value = "drift.mp4")]
+    #[arg(short, long, default_value = "cat.mp4")]
     pub path: String,
     // pub mode: String,
 }
@@ -67,6 +72,9 @@ impl SharedAsciiFrameQueue {
 }
 
 fn main() -> Result<(), ffmpeg::Error> {
+    pretty_env_logger::init();
+    ffmpeg::init().unwrap();
+
     let cli = Cli::parse();
 
     // let mode: Mode = match &cli.mode[..] {
@@ -86,17 +94,16 @@ fn main() -> Result<(), ffmpeg::Error> {
         Arc::clone(&shared_ascii_frame_queue),
         ascii_set::LOW,
     );
-    let mut player = Player::new(Arc::clone(&shared_ascii_frame_queue), 60);
+    let mut player = Player::new(Arc::clone(&shared_ascii_frame_queue), 24);
     let mut handles = vec![];
     handles.push(decoder.start());
     handles.push(converter.start());
     handles.push(player.start());
 
     loop {
-        println!("{}", converter);
-
         thread::sleep(Duration::from_secs(1));
     }
+
     //
     // print!("{}", converter);
     //

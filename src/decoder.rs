@@ -1,8 +1,5 @@
-use std::collections::VecDeque;
 use std::fmt::Display;
-use std::fs::File;
-use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
 use ffmpeg::format::{input, Pixel};
@@ -10,7 +7,6 @@ use ffmpeg::media::Type;
 use ffmpeg::software::scaling::flag::Flags;
 use ffmpeg::software::scaling::Context;
 use ffmpeg::util::frame::video::Video;
-use image::{ImageBuffer, RgbImage};
 
 use crate::frame::Frame;
 use crate::SharedFrameQueue;
@@ -47,6 +43,12 @@ impl DecoderWrapper {
             let context_decoder =
                 ffmpeg::codec::context::Context::from_parameters(input.parameters()).unwrap();
             let mut decoder = context_decoder.decoder().video().unwrap();
+
+            info!(
+                "Original Video width: {}, height : {}",
+                decoder.width(),
+                decoder.height()
+            );
 
             // conversion to pixel luminance
             let mut scaler = Context::get(

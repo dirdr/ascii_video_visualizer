@@ -1,8 +1,7 @@
 use std::{
     fmt::Display,
-    sync::{Arc, Mutex},
+    sync::Arc,
     thread::{self, JoinHandle},
-    time::Duration,
 };
 
 use crate::{
@@ -10,8 +9,7 @@ use crate::{
     term, SharedAsciiFrameQueue, SharedFrameQueue,
 };
 
-use ffmpeg::ffi::av_stream_get_codec_timebase;
-use image::{GrayImage, ImageBuffer, RgbImage};
+use image::{GrayImage, ImageBuffer};
 
 /// a converter takes `Frame` as an input
 /// and convert them into `AsciiFrame` depending on the generic `Mode`
@@ -77,28 +75,28 @@ impl Converter {
             }
         };
 
+        // TODO prendre en compte les charactrères ascii rectangulaire
         let resized_image = image::imageops::resize(
             &img,
             terminal_size.width,
-            terminal_size.height / 2, // because an ascii character is in a rectangular shape
+            terminal_size.height, // because an ascii character is in a rectangular shape
             image::imageops::FilterType::Nearest,
         );
 
         let mut char_buffer = vec![vec![]];
-        let mut row = vec![];
-        for (x, _y, pixel) in resized_image.enumerate_pixels() {
-            let luminance = pixel[0];
-            let char = Self::map_gray_level_to_ascii(luminance, charset);
-            row.push(char);
-            if x == (resized_image.width() - 1) {
-                char_buffer.push(row.clone());
-                row.clear();
+        for y in 0..resized_image.height() {
+            let mut row = vec![];
+            for x in 0..resized_image.width() {
+                let pixel = resized_image.get_pixel(x, y);
+                let char = Self::map_luminance_to_char(pixel[0], charset);
+                row.push(char);
             }
+            char_buffer.push(row);
         }
         AsciiFrame::new().send_char_buffer(char_buffer)
     }
 
-    fn map_gray_level_to_ascii(luminance: u8, charset: &'static str) -> char {
+    fn map_luminance_to_char(luminance: u8, charset: &'static str) -> char {
         let gray_scale = (luminance as f64) / 255.0;
         let index = (gray_scale * (charset.len() - 1) as f64).round() as usize;
         charset.chars().nth(index).unwrap()
