@@ -50,14 +50,13 @@ impl Player {
     }
 
     pub fn print_frame(frame: AsciiFrame<Full>) -> io::Result<()> {
-        println!("{:?}", frame.get_buffer());
-        // let stdout = std::io::stdout();
-        // let mut bw = BufWriter::new(stdout.lock());
-        // for row in frame.char_buffer {
-        //     write!(bw, "{}", row.iter().collect::<String>());
-        // }
-        // writeln!(bw)?;
-        // bw.flush();
+        let stdout = std::io::stdout();
+        let mut bw = BufWriter::new(stdout.lock());
+        for row in frame.get_buffer() {
+            write!(bw, "{}", row.iter().collect::<String>())?
+        }
+        writeln!(bw)?;
+        bw.flush()?;
         Ok(())
     }
 

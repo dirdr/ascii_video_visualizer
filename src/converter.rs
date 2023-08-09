@@ -86,11 +86,11 @@ impl Converter {
 
         let mut char_buffer = vec![vec![]];
         let mut row = vec![];
-        for (_x, y, pixel) in resized_image.enumerate_pixels() {
+        for (x, _y, pixel) in resized_image.enumerate_pixels() {
             let luminance = pixel[0];
             let char = Self::map_gray_level_to_ascii(luminance, charset);
             row.push(char);
-            if y == resized_image.width() {
+            if x == (resized_image.width() - 1) {
                 char_buffer.push(row.clone());
                 row.clear();
             }
