@@ -1,6 +1,8 @@
+use clap::Parser;
 extern crate ffmpeg_next as ffmpeg;
 extern crate pretty_env_logger;
 
+mod args;
 mod ascii_set;
 mod converter;
 mod decoder;
@@ -12,6 +14,8 @@ mod term;
 #[macro_use]
 extern crate log;
 
+use crate::args::Arguments;
+
 use std::{
     collections::VecDeque,
     sync::{Arc, Condvar, Mutex},
@@ -19,23 +23,10 @@ use std::{
     time::Duration,
 };
 
-use clap::Parser;
-
 use converter::Converter;
 use decoder::DecoderWrapper;
 use frame::{AsciiFrame, Frame, Full};
 use player::Player;
-
-#[derive(Parser, Debug)]
-#[command(name = "ascii_video_visualizer")]
-#[command(author = "Adrien P. <adrien.pelfresne@gmail.com>")]
-#[command(version = "1.0")]
-#[command(about = "convert mp4 video into ascii visualisation!")]
-pub struct Cli {
-    #[arg(short, long, default_value = "maths.mp4")]
-    pub path: String,
-    // pub mode: String,
-}
 
 // TODO faire une structure générique SharedQueue<T> avec T: Frame
 // et les strucutres AsciiFrame qui dérive ce trait et Frame qui dérive ce trait
@@ -75,15 +66,15 @@ fn main() -> Result<(), ffmpeg::Error> {
     pretty_env_logger::init();
     ffmpeg::init().unwrap();
 
-    let cli = Cli::parse();
-
-    // let mode: Mode = match &cli.mode[..] {
-    //     "mean" => Mode::Mean,
-    //     "individual" => Mode::Individual,
-    //     _ => Mode::Individual, // default value
-    // };
+    let cli = Arguments::parse();
 
     let path = format!("./resources/{}", cli.path.clone());
+
+    let detail_level = match cli.detail_level.as_str() {
+        "low" => ascii_set::LOW,
+        "basic" => ascii_set::BASIC,
+        _ => panic!("please select a correct detail level!"),
+    };
 
     let shared_frame_queue = Arc::new(SharedFrameQueue::new());
     let shared_ascii_frame_queue = Arc::new(SharedAsciiFrameQueue::new());
@@ -92,7 +83,7 @@ fn main() -> Result<(), ffmpeg::Error> {
     let mut converter = Converter::new(
         Arc::clone(&shared_frame_queue),
         Arc::clone(&shared_ascii_frame_queue),
-        ascii_set::BASIC,
+        detail_level,
     );
     let mut player = Player::new(Arc::clone(&shared_ascii_frame_queue), 60);
     let mut handles = vec![];

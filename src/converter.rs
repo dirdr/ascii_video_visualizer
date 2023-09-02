@@ -49,7 +49,7 @@ impl Converter {
                         ascii_frame_queue.condvar.notify_all();
                     }
                     None => {
-                        // block the thread until a frame is avaible in the queue
+                        // block the thread until a frame is available in the queue
                         frame_queue_guard = frame_queue.condvar.wait(frame_queue_guard).unwrap();
                     }
                 }
@@ -86,7 +86,7 @@ impl Converter {
             image::imageops::FilterType::Nearest,
         );
 
-        Self::save_frame(resized_image.clone(), index);
+        //Self::save_frame(resized_image.clone(), index);
 
         let mut char_buffer = vec![vec![]];
         for y in 0..resized_image.height() {
