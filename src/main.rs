@@ -70,21 +70,21 @@ fn main() -> Result<(), ffmpeg::Error> {
 
     let path = format!("./resources/{}", cli.path.clone());
 
-    let detail_level = match cli.detail_level.as_str() {
-        "low" => ascii_set::LOW,
-        "basic" => ascii_set::BASIC,
-        _ => panic!("please select a correct detail level!"),
-    };
+    let detail_level = cli.detail_level;
+
+    let mode = cli.mode;
 
     let shared_frame_queue = Arc::new(SharedFrameQueue::new());
     let shared_ascii_frame_queue = Arc::new(SharedAsciiFrameQueue::new());
 
-    let decoder = DecoderWrapper::new(&path, Arc::clone(&shared_frame_queue));
+    let decoder = DecoderWrapper::new(&path, &mode, Arc::clone(&shared_frame_queue));
     let mut converter = Converter::new(
         Arc::clone(&shared_frame_queue),
         Arc::clone(&shared_ascii_frame_queue),
         detail_level,
+        mode,
     );
+
     let mut player = Player::new(Arc::clone(&shared_ascii_frame_queue), 60);
     let mut handles = vec![];
     handles.push(decoder.start());

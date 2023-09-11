@@ -6,13 +6,13 @@ use clap::{Parser, ValueEnum};
 #[command(version = "1.0")]
 #[command(about = "convert mp4 video into ascii visualisation!")]
 pub struct Arguments {
-    #[arg(short, long, default_value = "maths.mp4")]
+    #[arg(short, long, default_value = "cat.mp4")]
     pub path: String,
 
     #[arg(short, long, default_value = "gray")]
     pub mode: Mode,
 
-    #[arg(short, long, default_value = "low")]
+    #[arg(short, long, default_value = "basic")]
     pub detail_level: DetailLevel,
 }
 
@@ -20,6 +20,8 @@ pub struct Arguments {
 pub enum Mode {
     #[clap(alias = "gray")]
     Gray,
+    #[clap(alias = "colored")]
+    Colored,
 }
 
 #[derive(Copy, Clone, ValueEnum, Debug, PartialOrd, Eq, PartialEq)]

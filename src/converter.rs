@@ -5,6 +5,8 @@ use std::{
 };
 
 use crate::{
+    args::{DetailLevel, Mode},
+    ascii_set::{BASIC, DETAILED},
     frame::{AsciiFrame, Frame, Full},
     term, SharedAsciiFrameQueue, SharedFrameQueue,
 };
@@ -18,18 +20,24 @@ pub struct Converter {
     frame_queue: Arc<SharedFrameQueue>,
     ascii_frame_queue: Arc<SharedAsciiFrameQueue>,
     set: &'static str,
+    mode: Mode,
 }
 
 impl Converter {
     pub fn new(
         frame_queue: Arc<SharedFrameQueue>,
         ascii_frame_queue: Arc<SharedAsciiFrameQueue>,
-        set: &'static str,
+        detail_level: DetailLevel,
+        mode: Mode,
     ) -> Self {
         Self {
             frame_queue,
             ascii_frame_queue,
-            set,
+            set: match detail_level {
+                DetailLevel::Basic => BASIC,
+                DetailLevel::Detailed => DETAILED,
+            },
+            mode,
         }
     }
 

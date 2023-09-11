@@ -1,3 +1,4 @@
+use core::panic;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
@@ -8,18 +9,23 @@ use ffmpeg::software::scaling::flag::Flags;
 use ffmpeg::software::scaling::Context;
 use ffmpeg::util::frame::video::Video;
 
+use crate::args::Mode;
 use crate::frame::Frame;
 use crate::SharedFrameQueue;
 
+/// The decoder is a wrapper around the ffmpeg tools
+/// He takes a video as input and decode it into `Frame`
 pub struct DecoderWrapper {
     path: String,
+    mode: Mode,
     frame_queue: Arc<SharedFrameQueue>,
 }
 
 impl DecoderWrapper {
-    pub fn new(path: &str, frame_queue: Arc<SharedFrameQueue>) -> Self {
+    pub fn new(path: &str, mode: &Mode, frame_queue: Arc<SharedFrameQueue>) -> Self {
         Self {
             path: path.to_owned(),
+            mode: mode.clone(),
             frame_queue,
         }
     }
@@ -27,7 +33,14 @@ impl DecoderWrapper {
     pub fn start(&self) -> JoinHandle<()> {
         let frame_queue = Arc::clone(&self.frame_queue);
         let path = self.path.clone();
-        let mut ictx = input(&path).unwrap();
+        let mut ictx = match input(&path) {
+            Ok(p) => p,
+            Err(_) => {
+                error!("can't find the input video file");
+                panic!();
+            }
+        };
+        let mode = self.mode.clone();
 
         thread::spawn(move || {
             // find the best video flux
@@ -50,12 +63,17 @@ impl DecoderWrapper {
                 decoder.height()
             );
 
+            let pixel_mode = match mode {
+                Mode::Gray => Pixel::GRAY8,
+                Mode::Colored => Pixel::RGB8,
+            };
+
             // conversion to pixel luminance
             let mut scaler = Context::get(
                 decoder.format(),
                 decoder.width(),
                 decoder.height(),
-                Pixel::GRAY8,
+                pixel_mode,
                 decoder.width(),
                 decoder.height(),
                 Flags::BILINEAR,
