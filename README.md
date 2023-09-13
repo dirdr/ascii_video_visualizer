@@ -1,4 +1,4 @@
-# avv a multithreaded tool to visualize video in your terminal :crab:
+# avv : a multithreaded tool to visualize video in your terminal :crab:
 
 ## Schema
 
