@@ -1,4 +1,4 @@
-# Ascii video visualizer
+# avv a multithreaded tool to visualize video in your terminal :crab:
 
 ## Schema
 
