@@ -1,13 +1,14 @@
 use std::{
-    io::{self, BufWriter, Cursor, Stdout, StdoutLock, Write},
+    io::{self, BufWriter, StdoutLock, Write},
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
 
 use crossterm::{
-    style::{ResetColor, SetBackgroundColor, SetForegroundColor, Stylize},
-    ExecutableCommand, QueueableCommand,
+    cursor::{MoveTo, Show},
+    style::{Color, Print, PrintStyledContent, ResetColor, Stylize},
+    QueueableCommand,
 };
 
 use crate::{converter::TerminalPixel, frame::AsciiFrame};
@@ -57,40 +58,35 @@ impl Player {
         let char_buffer = frame.get_buffer();
         for (y, row) in char_buffer.iter().enumerate() {
             for (x, pixel) in row.iter().enumerate() {
-                match pixel {
-                    TerminalPixel::Colored(ch, color) => {
-                        stdout
-                            .queue(crossterm::cursor::MoveTo(x as u16, y as u16))?
-                            .queue(crossterm::style::PrintStyledContent(
-                                ch.on(crossterm::style::Color::Black).with(
-                                    crossterm::style::Color::Rgb {
-                                        r: color[0],
-                                        g: color[1],
-                                        b: color[2],
-                                    },
-                                ),
-                            ))?
-                            .queue(crossterm::style::ResetColor)?;
-                    }
-                    TerminalPixel::Gray(ch) => {
-                        stdout
-                            .queue(crossterm::cursor::MoveTo(x as u16, y as u16))?
-                            .queue(crossterm::style::Print(ch))?;
-                    }
-                }
+                Self::print_char(x as u16, y as u16, *pixel)?;
             }
         }
         bw.flush()?;
         Ok(())
     }
 
-    pub fn stop(&mut self) {
+    fn print_char(x: u16, y: u16, terminal_pixel: TerminalPixel) -> io::Result<()> {
         let mut stdout = std::io::stdout();
-        stdout.queue(crossterm::cursor::Show).ok();
+        match terminal_pixel {
+            TerminalPixel::Colored(ch, color) => {
+                stdout
+                    .queue(MoveTo(x, y))?
+                    .queue(PrintStyledContent(ch.on(Color::Black).with(Color::Rgb {
+                        r: color[0],
+                        g: color[1],
+                        b: color[2],
+                    })))?
+                    .queue(ResetColor)?;
+            }
+            TerminalPixel::Gray(ch) => {
+                stdout.queue(MoveTo(x, y))?.queue(Print(ch))?;
+            }
+        }
+        Ok(())
     }
 
-    fn display_pixel(pixel: TerminalPixel, bw: &mut BufWriter<StdoutLock>) -> io::Result<()> {
+    pub fn stop(&mut self) {
         let mut stdout = std::io::stdout();
-        Ok(())
+        stdout.queue(Show).ok();
     }
 }

@@ -7,7 +7,7 @@ use std::{
 use crate::{
     args::{
         DetailLevel,
-        Mode::{self, Colored, Gray},
+        Mode::{self, Color, Gray},
     },
     ascii_set::{BASIC, DETAILED},
     frame::{AsciiFrame, Frame, Full},
@@ -101,7 +101,7 @@ impl Converter {
                 );
                 buffer.map(DynamicImage::ImageLuma8)
             }
-            Colored => {
+            Color => {
                 let buffer: Option<RgbImage> = ImageBuffer::from_raw(
                     frame.frame.width(),
                     frame.frame.height(),
@@ -132,7 +132,7 @@ impl Converter {
                 let pixel = image_buffer.get_pixel(x, y).clone();
                 let char = Self::map_luminance_to_char(pixel[0], charset);
                 match mode {
-                    Colored => row.push(TerminalPixel::Colored(char, pixel)),
+                    Color => row.push(TerminalPixel::Colored(char, pixel)),
                     Gray => row.push(TerminalPixel::Gray(char)),
                 }
             }

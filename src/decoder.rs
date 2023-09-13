@@ -67,7 +67,7 @@ impl DecoderWrapper {
 
             let pixel_mode = match mode {
                 Mode::Gray => Pixel::GRAY8,
-                Mode::Colored => Pixel::RGB24,
+                Mode::Color => Pixel::RGB24,
             };
 
             let term_size = crate::term::get().unwrap();

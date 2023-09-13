@@ -1,10 +1,11 @@
 # Ascii video visualizer
 
-## Operation
+## Schema
 
 ![schema](./schema.png)
 
 ## Install
+
 **[Ffmpeg](https://ffmpeg.org/download.html) is required to run this program**
 
 Clone the project :
@@ -13,33 +14,18 @@ Clone the project :
 git clone https://github.com/dirdr/ascii_video_visualizer && cd ascii_video_visualizer
 ```
 
-## Run
+## Usage and options
 
-```sh
-cargo run -- --<Mode> --[Path]
 ```
+Usage: cargo run -- [OPTIONS]
 
-the **Mode** is mandatory to run the visualizer, choose between _--Individual_ and _--Mean_
+Options:
+  -p, --path <PATH>                  the video path (with file extension) [default: cat.mp4]
+  -m, --mode <MODE>                  the rendering mode [default: gray] [possible values: gray, color]
+  -d, --detail-level <DETAIL_LEVEL>  the detail level (how many characters are used to render) [default: basic] [possible values: basic, detailed]
+  -h, --help                         Print help
+  -V, --version                      Print version
 
----
-
-#### Mode flag
-
-**Individual** : Resize the image to match your current terminal size and map each pixel to an ascii character
-
-**Mean** : Group pixel by 'packet' and pick an ascii char based on the mean of this packet
-
-> Note : Mean mode is currently not implemented
-
----
-
-#### Path flag (choose your video)
-
-You can **run** your own video.
-One video is included as an exemple _'Drift.mp4'_
-if path flag is not specified, the programm will take this video
-by default, but
-you can download your own and put it in the resources folder
-and spcified the correct path flag to run your video
+```
 
 ---
