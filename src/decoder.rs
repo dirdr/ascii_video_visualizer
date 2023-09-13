@@ -8,9 +8,11 @@ use ffmpeg::media::Type;
 use ffmpeg::software::scaling::flag::Flags;
 use ffmpeg::software::scaling::Context;
 use ffmpeg::util::frame::video::Video;
+use terminal_size::terminal_size;
 
 use crate::args::Mode;
 use crate::frame::Frame;
+use crate::term::get;
 use crate::SharedFrameQueue;
 
 /// The decoder is a wrapper around the ffmpeg tools
@@ -65,10 +67,11 @@ impl DecoderWrapper {
 
             let pixel_mode = match mode {
                 Mode::Gray => Pixel::GRAY8,
-                Mode::Colored => Pixel::RGB8,
+                Mode::Colored => Pixel::RGB24,
             };
 
-            // conversion to pixel luminance
+            let term_size = crate::term::get().unwrap();
+
             let mut scaler = Context::get(
                 decoder.format(),
                 decoder.width(),

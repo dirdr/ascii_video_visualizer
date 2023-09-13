@@ -5,13 +5,24 @@ use std::{
 };
 
 use crate::{
-    args::{DetailLevel, Mode},
+    args::{
+        DetailLevel,
+        Mode::{self, Colored, Gray},
+    },
     ascii_set::{BASIC, DETAILED},
     frame::{AsciiFrame, Frame, Full},
     term, SharedAsciiFrameQueue, SharedFrameQueue,
 };
 
-use image::{GrayImage, ImageBuffer, ImageResult, RgbImage};
+use image::{
+    DynamicImage, GenericImageView, GrayImage, ImageBuffer, ImageResult, Rgb, RgbImage, Rgba,
+};
+
+#[derive(Copy, Clone)]
+pub enum TerminalPixel {
+    Gray(char),
+    Colored(char, Rgba<u8>),
+}
 
 /// a converter takes `Frame` as an input
 /// and convert them into `AsciiFrame` depending on the generic `Mode`
@@ -46,12 +57,13 @@ impl Converter {
         let ascii_frame_queue = Arc::clone(&self.ascii_frame_queue);
         let set = self.set;
         let mut index = 0;
+        let mode = self.mode.clone();
         thread::spawn(move || {
             let mut frame_queue_guard = frame_queue.queue.lock().unwrap();
             loop {
                 match frame_queue_guard.pop_front() {
                     Some(frame) => {
-                        let converted = Self::convert_frame(frame.clone(), set, &mut index);
+                        let converted = Self::convert_frame(frame.clone(), set, mode, &mut index);
                         let mut ascii_frame_queue_guard = ascii_frame_queue.queue.lock().unwrap();
                         ascii_frame_queue_guard.push_back(converted.clone());
                         ascii_frame_queue.condvar.notify_all();
@@ -65,44 +77,64 @@ impl Converter {
         })
     }
 
-    fn convert_frame(frame: Frame, charset: &'static str, index: &mut i32) -> AsciiFrame<Full> {
+    fn convert_frame(
+        frame: Frame,
+        charset: &'static str,
+        mode: Mode,
+        index: &mut i32,
+    ) -> AsciiFrame<Full> {
         // TODO faire les deux modes (Sampling et Resizing)
-        let terminal_size = term::get().unwrap();
+        let term_size = term::get().unwrap();
 
-        let img: Option<GrayImage> = ImageBuffer::from_raw(
-            frame.frame.width(),
-            frame.frame.height(),
-            frame.frame.data(0).to_vec(),
+        info!(
+            "terminal size from converter : widt={}, height={}",
+            term_size.width, term_size.height
         );
 
-        let img = match img {
-            Some(value) => value,
-            None => {
-                println!("the recieved Frame is none");
-                // TODO a changer et juste sortir de programme c'est deguelasse la
-                return AsciiFrame::new().send_char_buffer(vec![]);
+        // TODO prendre en compte les ascii rectangulaire
+        let image_buffer = match mode {
+            Gray => {
+                let buffer: Option<GrayImage> = ImageBuffer::from_raw(
+                    frame.frame.width(),
+                    frame.frame.height(),
+                    frame.frame.data(0).to_vec(),
+                );
+                buffer.map(DynamicImage::ImageLuma8)
             }
-        };
-
-        // TODO prendre en compte les charactrères ascii rectangulaire
-        let resized_image = image::imageops::resize(
-            &img,
-            terminal_size.width,
-            terminal_size.height, // because an ascii character is in a rectangular shape
-            //frame.frame.width(),
-            // frame.frame.height(),
+            Colored => {
+                let buffer: Option<RgbImage> = ImageBuffer::from_raw(
+                    frame.frame.width(),
+                    frame.frame.height(),
+                    frame.frame.data(0).to_vec(),
+                );
+                buffer.map(DynamicImage::ImageRgb8)
+            }
+        }
+        .expect("expected a frame")
+        .resize_exact(
+            term_size.width,
+            term_size.height,
             image::imageops::FilterType::Nearest,
         );
 
-        //Self::save_frame(resized_image.clone(), index);
+        info!(
+            "final buffer size : width={}, height={}",
+            image_buffer.width(),
+            image_buffer.height()
+        );
+
+        //Self::save_frame(image_buffer.clone(), index);
 
         let mut char_buffer = vec![vec![]];
-        for y in 0..resized_image.height() {
+        for y in 0..image_buffer.height() {
             let mut row = vec![];
-            for x in 0..resized_image.width() {
-                let pixel = resized_image.get_pixel(x, y);
+            for x in 0..image_buffer.width() {
+                let pixel = image_buffer.get_pixel(x, y).clone();
                 let char = Self::map_luminance_to_char(pixel[0], charset);
-                row.push(char);
+                match mode {
+                    Colored => row.push(TerminalPixel::Colored(char, pixel)),
+                    Gray => row.push(TerminalPixel::Gray(char)),
+                }
             }
             char_buffer.push(row);
         }
@@ -115,7 +147,7 @@ impl Converter {
         charset.chars().nth(index).unwrap()
     }
 
-    fn save_frame(frame: GrayImage, index: &mut i32) -> ImageResult<()> {
+    fn save_frame(frame: DynamicImage, index: &mut i32) -> ImageResult<()> {
         frame.save(format!("resources/frame_dump/frame{index}.png"))?;
         *index += 1;
         Ok(())

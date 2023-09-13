@@ -1,13 +1,16 @@
 use std::{
-    io::{self, BufWriter, Write},
+    io::{self, BufWriter, Cursor, Stdout, StdoutLock, Write},
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
 };
 
-use crossterm::QueueableCommand;
+use crossterm::{
+    style::{ResetColor, SetBackgroundColor, SetForegroundColor, Stylize},
+    ExecutableCommand, QueueableCommand,
+};
 
-use crate::frame::AsciiFrame;
+use crate::{converter::TerminalPixel, frame::AsciiFrame};
 use crate::{frame::Full, SharedAsciiFrameQueue};
 
 /// The `Player` struct output his content
@@ -49,14 +52,33 @@ impl Player {
     }
 
     pub fn print_frame(frame: AsciiFrame<Full>) -> io::Result<()> {
-        let stdout = std::io::stdout();
+        let mut stdout = std::io::stdout();
         let mut bw = BufWriter::new(stdout.lock());
         let char_buffer = frame.get_buffer();
-        for row in char_buffer {
-            for char in row {
-                write!(bw, "{}", char)?;
+        for (y, row) in char_buffer.iter().enumerate() {
+            for (x, pixel) in row.iter().enumerate() {
+                match pixel {
+                    TerminalPixel::Colored(ch, color) => {
+                        stdout
+                            .queue(crossterm::cursor::MoveTo(x as u16, y as u16))?
+                            .queue(crossterm::style::PrintStyledContent(
+                                ch.on(crossterm::style::Color::Black).with(
+                                    crossterm::style::Color::Rgb {
+                                        r: color[0],
+                                        g: color[1],
+                                        b: color[2],
+                                    },
+                                ),
+                            ))?
+                            .queue(crossterm::style::ResetColor)?;
+                    }
+                    TerminalPixel::Gray(ch) => {
+                        stdout
+                            .queue(crossterm::cursor::MoveTo(x as u16, y as u16))?
+                            .queue(crossterm::style::Print(ch))?;
+                    }
+                }
             }
-            writeln!(bw)?;
         }
         bw.flush()?;
         Ok(())
@@ -65,5 +87,10 @@ impl Player {
     pub fn stop(&mut self) {
         let mut stdout = std::io::stdout();
         stdout.queue(crossterm::cursor::Show).ok();
+    }
+
+    fn display_pixel(pixel: TerminalPixel, bw: &mut BufWriter<StdoutLock>) -> io::Result<()> {
+        let mut stdout = std::io::stdout();
+        Ok(())
     }
 }

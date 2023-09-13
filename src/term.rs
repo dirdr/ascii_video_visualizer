@@ -11,8 +11,8 @@ pub fn get() -> Option<TermSize> {
         width: w as u32,
         height: h as u32,
     });
-    // if let Some(ts) = terminal_size.clone() {
-    //     info!("terminal_size | width: {} height: {}", ts.width, ts.height);
-    // }
+    if let Some(ts) = terminal_size.clone() {
+        info!("terminal_size : width={} height={}", ts.width, ts.height);
+    }
     terminal_size
 }
