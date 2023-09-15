@@ -1,5 +1,5 @@
 use std::{
-    io::{self, BufWriter, StdoutLock, Write},
+    io::{self, BufWriter, Write},
     sync::Arc,
     thread::{self, JoinHandle},
     time::Duration,
@@ -11,18 +11,18 @@ use crossterm::{
     QueueableCommand,
 };
 
-use crate::{converter::TerminalPixel, frame::AsciiFrame};
-use crate::{frame::Full, SharedAsciiFrameQueue};
+use crate::frame::Full;
+use crate::{converter::TerminalPixel, frame::AsciiFrame, GenericSharedQueue};
 
 /// The `Player` struct output his content
 /// into stdout to be visualized
 pub struct Player {
-    ascii_frame_queue: Arc<SharedAsciiFrameQueue>,
+    ascii_frame_queue: Arc<GenericSharedQueue<AsciiFrame<Full>>>,
     delta: u64,
 }
 
 impl Player {
-    pub fn new(frame_queue: Arc<SharedAsciiFrameQueue>, frame_rate: usize) -> Self {
+    pub fn new(frame_queue: Arc<GenericSharedQueue<AsciiFrame<Full>>>, frame_rate: usize) -> Self {
         Self {
             ascii_frame_queue: frame_queue,
             delta: ((1.0 / frame_rate as f64) * 1000.0) as u64,
@@ -53,7 +53,7 @@ impl Player {
     }
 
     pub fn print_frame(frame: AsciiFrame<Full>) -> io::Result<()> {
-        let mut stdout = std::io::stdout();
+        let stdout = std::io::stdout();
         let mut bw = BufWriter::new(stdout.lock());
         let char_buffer = frame.get_buffer();
         for (y, row) in char_buffer.iter().enumerate() {
@@ -70,7 +70,7 @@ impl Player {
         match terminal_pixel {
             TerminalPixel::Colored(ch, color) => {
                 stdout
-                    .queue(MoveTo(x, y))?
+                    .queue(MoveTo(x, y - 1))?
                     .queue(PrintStyledContent(ch.on(Color::Black).with(Color::Rgb {
                         r: color[0],
                         g: color[1],
@@ -79,7 +79,7 @@ impl Player {
                     .queue(ResetColor)?;
             }
             TerminalPixel::Gray(ch) => {
-                stdout.queue(MoveTo(x, y))?.queue(Print(ch))?;
+                stdout.queue(MoveTo(x, y - 1))?.queue(Print(ch))?;
             }
         }
         Ok(())

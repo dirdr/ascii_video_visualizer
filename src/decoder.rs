@@ -8,41 +8,34 @@ use ffmpeg::media::Type;
 use ffmpeg::software::scaling::flag::Flags;
 use ffmpeg::software::scaling::Context;
 use ffmpeg::util::frame::video::Video;
-use terminal_size::terminal_size;
 
-use crate::args::Mode;
+use crate::args::{Arguments, Mode};
 use crate::frame::Frame;
-use crate::term::get;
-use crate::SharedFrameQueue;
+use crate::GenericSharedQueue;
 
 /// The decoder is a wrapper around the ffmpeg tools
 /// He takes a video as input and decode it into `Frame`
 pub struct DecoderWrapper {
-    path: String,
-    mode: Mode,
-    frame_queue: Arc<SharedFrameQueue>,
+    frame_queue: Arc<GenericSharedQueue<Frame>>,
+    cli: Arguments,
 }
 
 impl DecoderWrapper {
-    pub fn new(path: &str, mode: &Mode, frame_queue: Arc<SharedFrameQueue>) -> Self {
-        Self {
-            path: path.to_owned(),
-            mode: mode.clone(),
-            frame_queue,
-        }
+    pub fn new(frame_queue: Arc<GenericSharedQueue<Frame>>, cli: Arguments) -> Self {
+        Self { frame_queue, cli }
     }
 
     pub fn start(&self) -> JoinHandle<()> {
         let frame_queue = Arc::clone(&self.frame_queue);
-        let path = self.path.clone();
-        let mut ictx = match input(&path) {
+        let path = self.cli.path.clone();
+        let mut ictx = match input(&format!("./resources/{}", self.cli.path.clone())) {
             Ok(p) => p,
             Err(_) => {
-                error!("can't find the input video file");
+                error!("can't find the input video file {path}");
                 panic!();
             }
         };
-        let mode = self.mode.clone();
+        let mode = self.cli.mode.clone();
 
         thread::spawn(move || {
             // find the best video flux
@@ -69,8 +62,6 @@ impl DecoderWrapper {
                 Mode::Gray => Pixel::GRAY8,
                 Mode::Color => Pixel::RGB24,
             };
-
-            let term_size = crate::term::get().unwrap();
 
             let mut scaler = Context::get(
                 decoder.format(),

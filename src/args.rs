@@ -1,6 +1,6 @@
 use clap::{Parser, ValueEnum};
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(
     name = "ascii_video_visualizer",
     about = "convert video into ascii visualisation!",
