@@ -1,7 +1,10 @@
 use std::{
     collections::HashMap,
     fmt::Display,
-    sync::Arc,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     thread::{self, JoinHandle},
 };
 
@@ -29,6 +32,7 @@ pub enum TerminalPixel {
 pub struct Converter {
     frame_queue: Arc<GenericSharedQueue<Frame>>,
     ascii_frame_queue: Arc<GenericSharedQueue<AsciiFrame<Full>>>,
+    should_stop: Arc<AtomicBool>,
     charset_mapper: CharsetMapper,
     cli: Arguments,
 }
@@ -60,11 +64,13 @@ impl Converter {
     pub fn new(
         frame_queue: Arc<GenericSharedQueue<Frame>>,
         ascii_frame_queue: Arc<GenericSharedQueue<AsciiFrame<Full>>>,
+        should_stop: Arc<AtomicBool>,
         cli: Arguments,
     ) -> Self {
         Self {
             frame_queue,
             ascii_frame_queue,
+            should_stop,
             charset_mapper: CharsetMapper::new(match cli.detail_level {
                 DetailLevel::Basic => BASIC,
                 DetailLevel::Detailed => DETAILED,
@@ -78,6 +84,7 @@ impl Converter {
         let ascii_frame_queue = Arc::clone(&self.ascii_frame_queue);
         let mut charset_mapper = self.charset_mapper.clone();
         let mode = self.cli.mode.clone();
+        let should_stop = Arc::clone(&self.should_stop);
         thread::spawn(move || {
             let mut frame_queue_guard = frame_queue.queue.lock().unwrap();
             loop {
@@ -93,6 +100,9 @@ impl Converter {
                         // block the thread until a frame is available in the queue
                         frame_queue_guard = frame_queue.condvar.wait(frame_queue_guard).unwrap();
                     }
+                }
+                if should_stop.load(Ordering::Relaxed) && frame_queue_guard.is_empty() {
+                    break;
                 }
             }
         })

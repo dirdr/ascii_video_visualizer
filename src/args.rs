@@ -17,6 +17,8 @@ pub struct Arguments {
     /// the detail level (how many characters are used to render)
     #[arg(short, long, default_value = "basic")]
     pub detail_level: DetailLevel,
+    #[arg(short, long)]
+    pub output_path: String,
 }
 
 #[derive(Copy, Clone, ValueEnum, Debug, PartialOrd, Eq, PartialEq)]

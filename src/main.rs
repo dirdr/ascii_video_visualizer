@@ -18,7 +18,10 @@ use crate::args::Arguments;
 
 use std::{
     collections::VecDeque,
-    sync::{mpsc, Arc, Condvar, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        mpsc, Arc, Condvar, Mutex,
+    },
     thread,
     time::Duration,
 };
@@ -49,23 +52,26 @@ fn main() -> Result<(), ffmpeg::Error> {
     let cli = Arguments::parse();
     let shared_frame_queue = Arc::new(GenericSharedQueue::<Frame>::new());
     let shared_ascii_frame_queue = Arc::new(GenericSharedQueue::<AsciiFrame<Full>>::new());
-    let (tx, rx) = mpsc::channel();
     let decoder = DecoderWrapper::new(Arc::clone(&shared_frame_queue), cli.clone());
+    let should_stop = Arc::new(AtomicBool::new(false));
     let mut converter = Converter::new(
         Arc::clone(&shared_frame_queue),
         Arc::clone(&shared_ascii_frame_queue),
+        Arc::clone(&should_stop),
         cli.clone(),
     );
-    let mut player = Player::new(Arc::clone(&shared_ascii_frame_queue), 60);
-    let mut handles = vec![];
+    let mut player = Player::new(
+        Arc::clone(&shared_ascii_frame_queue),
+        Arc::clone(&should_stop),
+        60,
+    );
 
-    handles.push(decoder.start());
-    handles.push(converter.start());
-    handles.push(player.start());
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
-
+    let decoder_handle = decoder.start();
+    let converter_handle = converter.start();
+    let player_handle = player.start();
+    decoder_handle.join().unwrap();
+    should_stop.store(true, Ordering::Relaxed);
+    converter_handle.join().unwrap();
+    player_handle.unwrap().join().unwrap();
     Ok(())
 }
