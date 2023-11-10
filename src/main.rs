@@ -1,4 +1,6 @@
+use args::INSTANCE;
 use clap::Parser;
+use queues::{ASCII_FRAME_QUEUE_INSTANCE, INPUT_FRAME_QUEUE_INSTANCE, OUTPUT_FRAME_QUEUE_INSTANCE};
 extern crate ffmpeg_next as ffmpeg;
 extern crate pretty_env_logger;
 
@@ -9,63 +11,40 @@ mod decoder;
 mod encoder;
 mod frame;
 mod player;
+mod queues;
 mod term;
 
 #[macro_use]
 extern crate log;
 
 use crate::args::Arguments;
+use crate::queues::GenericSharedQueue;
 
-use std::{
-    collections::VecDeque,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc, Arc, Condvar, Mutex,
-    },
-    thread,
-    time::Duration,
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
 };
 
-use converter::Converter;
+use converter::{Converter, FrameToAsciiFrameConverter};
 use decoder::DecoderWrapper;
 use frame::{AsciiFrame, Frame, Full};
 use player::Player;
-
-pub struct GenericSharedQueue<T> {
-    queue: Mutex<VecDeque<T>>,
-    condvar: Condvar,
-}
-
-impl<T> GenericSharedQueue<T> {
-    pub fn new() -> Self {
-        Self {
-            queue: Mutex::new(VecDeque::new()),
-            condvar: Condvar::new(),
-        }
-    }
-}
 
 fn main() -> Result<(), ffmpeg::Error> {
     pretty_env_logger::init();
     ffmpeg::init().unwrap();
 
     let cli = Arguments::parse();
-    let shared_frame_queue = Arc::new(GenericSharedQueue::<Frame>::new());
-    let shared_ascii_frame_queue = Arc::new(GenericSharedQueue::<AsciiFrame<Full>>::new());
-    let decoder = DecoderWrapper::new(Arc::clone(&shared_frame_queue), cli.clone());
-    let should_stop = Arc::new(AtomicBool::new(false));
-    let mut converter = Converter::new(
-        Arc::clone(&shared_frame_queue),
-        Arc::clone(&shared_ascii_frame_queue),
-        Arc::clone(&should_stop),
-        cli.clone(),
-    );
-    let mut player = Player::new(
-        Arc::clone(&shared_ascii_frame_queue),
-        Arc::clone(&should_stop),
-        60,
-    );
+    let _ = INSTANCE.set(cli);
 
+    let _ = INPUT_FRAME_QUEUE_INSTANCE.set(GenericSharedQueue::<Frame>::new());
+    let _ = ASCII_FRAME_QUEUE_INSTANCE.set(GenericSharedQueue::<AsciiFrame<Full>>::new());
+    let _ = OUTPUT_FRAME_QUEUE_INSTANCE.set(GenericSharedQueue::<Frame>::new());
+
+    let decoder = DecoderWrapper::new();
+    let should_stop = Arc::new(AtomicBool::new(false));
+    let mut converter = FrameToAsciiFrameConverter::new(Arc::clone(&should_stop));
+    let mut player = Player::new(Arc::clone(&should_stop), 60);
     let decoder_handle = decoder.start();
     let converter_handle = converter.start();
     let player_handle = player.start();

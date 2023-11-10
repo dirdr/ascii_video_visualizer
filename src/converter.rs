@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    fmt::Display,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -9,14 +8,19 @@ use std::{
 };
 
 use crate::{
+    args::Arguments,
+    frame::{Frame, Full},
+};
+use crate::{
     args::{
-        Arguments, DetailLevel,
+        DetailLevel,
         Mode::{self, Color, Gray},
     },
-    ascii_set::{BASIC, DETAILED},
-    frame::{AsciiFrame, Frame, Full},
-    term, GenericSharedQueue,
+    ascii_set::{self},
+    frame::AsciiFrame,
+    term,
 };
+use crate::{queues::FrameType, GenericSharedQueue};
 
 use image::{DynamicImage, GenericImageView, GrayImage, ImageBuffer, ImageResult, RgbImage, Rgba};
 
@@ -24,17 +28,6 @@ use image::{DynamicImage, GenericImageView, GrayImage, ImageBuffer, ImageResult,
 pub enum TerminalPixel {
     Gray(char),
     Colored(char, Rgba<u8>),
-}
-
-/// a converter takes `Frame` as an input
-/// and convert them into `AsciiFrame` depending on the generic `Mode`
-/// this process is done in a separate thread.
-pub struct Converter {
-    frame_queue: Arc<GenericSharedQueue<Frame>>,
-    ascii_frame_queue: Arc<GenericSharedQueue<AsciiFrame<Full>>>,
-    should_stop: Arc<AtomicBool>,
-    charset_mapper: CharsetMapper,
-    cli: Arguments,
 }
 
 #[derive(Debug, Clone)]
@@ -60,52 +53,56 @@ impl CharsetMapper {
     }
 }
 
-impl Converter {
-    pub fn new(
-        frame_queue: Arc<GenericSharedQueue<Frame>>,
-        ascii_frame_queue: Arc<GenericSharedQueue<AsciiFrame<Full>>>,
-        should_stop: Arc<AtomicBool>,
-        cli: Arguments,
-    ) -> Self {
-        Self {
-            frame_queue,
-            ascii_frame_queue,
-            should_stop,
-            charset_mapper: CharsetMapper::new(match cli.detail_level {
-                DetailLevel::Basic => BASIC,
-                DetailLevel::Detailed => DETAILED,
-            }),
-            cli,
-        }
-    }
+pub trait Converter {
+    fn start(&mut self) -> JoinHandle<()>;
+}
 
-    pub fn start(&mut self) -> JoinHandle<()> {
-        let frame_queue = Arc::clone(&self.frame_queue);
-        let ascii_frame_queue = Arc::clone(&self.ascii_frame_queue);
-        let mut charset_mapper = self.charset_mapper.clone();
-        let mode = self.cli.mode.clone();
+pub struct FrameToAsciiFrameConverter {
+    should_stop: Arc<AtomicBool>,
+}
+
+pub struct AsciiFrameToFrameConverter {}
+
+impl Converter for FrameToAsciiFrameConverter {
+    fn start(&mut self) -> JoinHandle<()> {
+        let frame_queue = GenericSharedQueue::<Frame>::global(FrameType::Input);
+        let output_frame_queue = GenericSharedQueue::<AsciiFrame<Full>>::global(FrameType::Output);
+        let mode = Arguments::global().mode.clone();
+        let detail_level = Arguments::global().detail_level.clone();
+        //TODO changer pour eviter de cloner a chaque fois
+        let mut charset_mapper = CharsetMapper::new(match detail_level {
+            DetailLevel::Basic => ascii_set::BASIC,
+            DetailLevel::Detailed => ascii_set::DETAILED,
+        })
+        .clone();
         let should_stop = Arc::clone(&self.should_stop);
         thread::spawn(move || {
-            let mut frame_queue_guard = frame_queue.queue.lock().unwrap();
+            let mut input_queue_guard = frame_queue.queue.lock().unwrap();
             loop {
-                match frame_queue_guard.pop_front() {
+                match input_queue_guard.pop_front() {
                     Some(frame) => {
                         let converted =
                             Self::convert_frame(frame.clone(), mode, &mut charset_mapper);
-                        let mut ascii_frame_queue_guard = ascii_frame_queue.queue.lock().unwrap();
-                        ascii_frame_queue_guard.push_back(converted.clone());
-                        ascii_frame_queue.condvar.notify_all();
+                        let mut output_frame_queue_guard = output_frame_queue.queue.lock().unwrap();
+                        output_frame_queue_guard.push_back(converted.clone());
+                        output_frame_queue.condvar.notify_all();
                     }
                     None => {
                         // block the thread until a frame is available in the queue
-                        frame_queue_guard = frame_queue.condvar.wait(frame_queue_guard).unwrap();
+                        input_queue_guard = frame_queue.condvar.wait(input_queue_guard).unwrap();
                     }
                 }
-                if should_stop.load(Ordering::Relaxed) && frame_queue_guard.is_empty() {
+                if should_stop.load(Ordering::Relaxed) && input_queue_guard.is_empty() {
                     break;
                 }
             }
         })
+    }
+}
+
+impl FrameToAsciiFrameConverter {
+    pub fn new(should_stop: Arc<AtomicBool>) -> Self {
+        Self { should_stop }
     }
 
     /// process a ffmpeg frame into a image buffer
@@ -174,16 +171,16 @@ impl Converter {
     }
 }
 
-impl Display for Converter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let frames = Arc::clone(&self.frame_queue);
-        let ascii_frames = Arc::clone(&self.ascii_frame_queue);
-        let frames_len = frames.queue.lock().unwrap().len();
-        let ascii_frames_len = ascii_frames.queue.lock().unwrap().len();
-        write!(
-            f,
-            "frame_queue {} ascii_frame_queue {}",
-            frames_len, ascii_frames_len
-        )
-    }
-}
+// impl Display for dyn Converter {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         let frames = Arc::clone(&self.input_queue);
+//         let output_queue = Arc::clone(&self.output_queue);
+//         let frames_len = frames.queue.lock().unwrap().len();
+//         let ascii_frames_len = ascii_frames.queue.lock().unwrap().len();
+//         write!(
+//             f,
+//             "frame_queue {} ascii_frame_queue {}",
+//             frames_len, ascii_frames_len
+//         )
+//     }
+// }

@@ -11,31 +11,30 @@ use ffmpeg::util::frame::video::Video;
 
 use crate::args::{Arguments, Mode};
 use crate::frame::Frame;
+use crate::queues::FrameType;
 use crate::GenericSharedQueue;
 
 /// The decoder is a wrapper around the ffmpeg tools
 /// He takes a video as input and decode it into `Frame`
-pub struct DecoderWrapper {
-    frame_queue: Arc<GenericSharedQueue<Frame>>,
-    cli: Arguments,
-}
+pub struct DecoderWrapper {}
 
 impl DecoderWrapper {
-    pub fn new(frame_queue: Arc<GenericSharedQueue<Frame>>, cli: Arguments) -> Self {
-        Self { frame_queue, cli }
+    pub fn new() -> Self {
+        Self {}
     }
 
     pub fn start(&self) -> JoinHandle<()> {
-        let frame_queue = Arc::clone(&self.frame_queue);
-        let path = self.cli.path.clone();
-        let mut ictx = match input(&format!("./resources/{}", self.cli.path.clone())) {
+        let cli = Arguments::global();
+        let frame_queue = GenericSharedQueue::<Frame>::global(FrameType::Input);
+        let path = cli.path.clone();
+        let mut ictx = match input(&format!("./resources/{}", cli.path.clone())) {
             Ok(p) => p,
             Err(_) => {
                 error!("can't find the input video file {path}");
                 panic!();
             }
         };
-        let mode = self.cli.mode.clone();
+        let mode = cli.mode.clone();
 
         thread::spawn(move || {
             // find the best video flux
@@ -91,12 +90,5 @@ impl DecoderWrapper {
             }
             decoder.send_eof().unwrap();
         })
-    }
-}
-impl Display for DecoderWrapper {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let frames = Arc::clone(&self.frame_queue);
-        let frames_len = frames.queue.lock().unwrap().len();
-        write!(f, "frame_queue {}", frames_len,)
     }
 }

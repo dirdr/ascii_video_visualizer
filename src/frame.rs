@@ -25,7 +25,7 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(frame: ffmpeg::util::frame::Video) -> Frame {
+    pub fn new(frame: ffmpeg::util::frame::Video) -> Self {
         Frame { frame }
     }
 }

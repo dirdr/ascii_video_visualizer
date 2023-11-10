@@ -15,25 +15,19 @@ use crossterm::{
     QueueableCommand,
 };
 
-use crate::frame::Full;
 use crate::{converter::TerminalPixel, frame::AsciiFrame, GenericSharedQueue};
+use crate::{frame::Full, queues::FrameType};
 
 /// The `Player` struct output his content
 /// into stdout to be visualized
 pub struct Player {
-    ascii_frame_queue: Arc<GenericSharedQueue<AsciiFrame<Full>>>,
     should_stop: Arc<AtomicBool>,
     delta: u64,
 }
 
 impl Player {
-    pub fn new(
-        frame_queue: Arc<GenericSharedQueue<AsciiFrame<Full>>>,
-        should_stop: Arc<AtomicBool>,
-        frame_rate: usize,
-    ) -> Self {
+    pub fn new(should_stop: Arc<AtomicBool>, frame_rate: usize) -> Self {
         Self {
-            ascii_frame_queue: frame_queue,
             should_stop,
             delta: ((1.0 / frame_rate as f64) * 1000.0) as u64,
         }
@@ -41,7 +35,7 @@ impl Player {
 
     pub fn start(&mut self) -> Result<JoinHandle<()>, io::Error> {
         let mut stdout = std::io::stdout();
-        let queue_clone = Arc::clone(&self.ascii_frame_queue);
+        let queue_clone = GenericSharedQueue::<AsciiFrame<Full>>::global(FrameType::Output);
         let delta = self.delta.clone();
         let should_stop = Arc::clone(&self.should_stop);
 
