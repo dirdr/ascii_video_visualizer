@@ -18,6 +18,8 @@ use crossterm::{
 use crate::{converter::TerminalPixel, frame::AsciiFrame, GenericSharedQueue};
 use crate::{frame::Full, queues::FrameType};
 
+use anyhow::Result;
+
 /// The `Player` struct output his content
 /// into stdout to be visualized
 pub struct Player {
@@ -33,7 +35,7 @@ impl Player {
         }
     }
 
-    pub fn start(&mut self) -> Result<JoinHandle<()>, io::Error> {
+    pub fn start(&mut self) -> anyhow::Result<()> {
         let mut stdout = std::io::stdout();
         let queue_clone = GenericSharedQueue::<AsciiFrame<Full>>::global(FrameType::Output);
         let delta = self.delta.clone();
@@ -42,7 +44,7 @@ impl Player {
         stdout.queue(crossterm::cursor::Hide)?;
         info!("delta between frame {delta}");
 
-        Ok(thread::spawn(move || {
+        let worker = thread::spawn(move || -> Result<()> {
             let mut queue_guard = queue_clone.queue.lock().unwrap();
             loop {
                 thread::sleep(Duration::from_millis(delta));
@@ -53,14 +55,16 @@ impl Player {
                         queue_guard = queue_clone.condvar.wait(queue_guard).unwrap();
                         Ok(())
                     }
-                }
-                .unwrap_or_else(|e| error!("{e}"));
+                }?;
                 if should_stop.load(Ordering::Relaxed) && queue_guard.is_empty() {
                     Self::reset().unwrap();
                     break;
                 }
             }
-        }))
+            Ok(())
+        });
+        worker.join().unwrap()?;
+        Ok(())
     }
 
     fn reset() -> io::Result<()> {

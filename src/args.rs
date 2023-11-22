@@ -18,7 +18,7 @@ pub struct Arguments {
     /// the detail level (how many characters are used to render)
     #[arg(short, long, default_value = "basic")]
     pub detail_level: DetailLevel,
-
+    // the optional output path, if doesn't provided, the video will be played in the terminal
     #[arg(short, long)]
     pub output_path: Option<String>,
 }
@@ -40,9 +40,20 @@ pub enum DetailLevel {
     Detailed,
 }
 
+pub enum Output {
+    Play,
+    Encode,
+}
+
 pub static INSTANCE: OnceCell<Arguments> = OnceCell::new();
 
 impl Arguments {
+    pub fn get_rendering_mode() -> Output {
+        match &Arguments::global().output_path {
+            Some(_) => Output::Encode,
+            None => Output::Play,
+        }
+    }
     pub fn global() -> &'static Arguments {
         INSTANCE.get().expect("arguments are not initialized")
     }

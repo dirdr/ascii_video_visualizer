@@ -54,7 +54,7 @@ impl CharsetMapper {
 }
 
 pub trait Converter {
-    fn start(&mut self) -> JoinHandle<()>;
+    fn start(&mut self) -> anyhow::Result<JoinHandle<()>>;
 }
 
 pub struct FrameToAsciiFrameConverter {
@@ -64,7 +64,7 @@ pub struct FrameToAsciiFrameConverter {
 pub struct AsciiFrameToFrameConverter {}
 
 impl Converter for FrameToAsciiFrameConverter {
-    fn start(&mut self) -> JoinHandle<()> {
+    fn start(&mut self) -> anyhow::Result<JoinHandle<()>> {
         let frame_queue = GenericSharedQueue::<Frame>::global(FrameType::Input);
         let output_frame_queue = GenericSharedQueue::<AsciiFrame<Full>>::global(FrameType::Output);
         let mode = Arguments::global().mode.clone();
@@ -76,7 +76,7 @@ impl Converter for FrameToAsciiFrameConverter {
         })
         .clone();
         let should_stop = Arc::clone(&self.should_stop);
-        thread::spawn(move || {
+        Ok(thread::spawn(move || {
             let mut input_queue_guard = frame_queue.queue.lock().unwrap();
             loop {
                 match input_queue_guard.pop_front() {
@@ -96,7 +96,7 @@ impl Converter for FrameToAsciiFrameConverter {
                     break;
                 }
             }
-        })
+        }))
     }
 }
 
