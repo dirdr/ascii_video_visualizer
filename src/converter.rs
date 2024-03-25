@@ -20,6 +20,7 @@ use crate::{
     frame::AsciiFrame,
     term,
 };
+
 use crate::{queues::FrameType, GenericSharedQueue};
 
 use image::{DynamicImage, GenericImageView, GrayImage, ImageBuffer, ImageResult, RgbImage, Rgba};
