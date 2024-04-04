@@ -38,7 +38,7 @@ impl Player {
     pub fn start(&mut self) -> anyhow::Result<()> {
         let mut stdout = std::io::stdout();
         let queue_clone = GenericSharedQueue::<AsciiFrame<Full>>::global(FrameType::Output);
-        let delta = self.delta.clone();
+        let delta = self.delta;
         let should_stop = Arc::clone(&self.should_stop);
 
         stdout.queue(crossterm::cursor::Hide)?;

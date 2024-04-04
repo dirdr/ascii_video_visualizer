@@ -23,7 +23,7 @@ use crate::{
 
 use crate::{queues::FrameType, GenericSharedQueue};
 
-use image::{DynamicImage, GenericImageView, GrayImage, ImageBuffer, ImageResult, RgbImage, Rgba};
+use image::{DynamicImage, GenericImageView, GrayImage, ImageBuffer, RgbImage, Rgba};
 
 #[derive(Copy, Clone)]
 pub enum TerminalPixel {
@@ -62,14 +62,12 @@ pub struct FrameToAsciiFrameConverter {
     should_stop: Arc<AtomicBool>,
 }
 
-pub struct AsciiFrameToFrameConverter {}
-
 impl Converter for FrameToAsciiFrameConverter {
     fn start(&mut self) -> anyhow::Result<JoinHandle<()>> {
         let frame_queue = GenericSharedQueue::<Frame>::global(FrameType::Input);
         let output_frame_queue = GenericSharedQueue::<AsciiFrame<Full>>::global(FrameType::Output);
-        let mode = Arguments::global().mode.clone();
-        let detail_level = Arguments::global().detail_level.clone();
+        let mode = Arguments::global().mode;
+        let detail_level = Arguments::global().detail_level;
         //TODO changer pour eviter de cloner a chaque fois
         let mut charset_mapper = CharsetMapper::new(match detail_level {
             DetailLevel::Basic => ascii_set::BASIC,
@@ -163,12 +161,6 @@ impl FrameToAsciiFrameConverter {
             char_buffer.push(row);
         }
         AsciiFrame::new().send_char_buffer(char_buffer)
-    }
-
-    fn save_frame(frame: DynamicImage, index: &mut i32) -> ImageResult<()> {
-        frame.save(format!("resources/frame_dump/frame{index}.png"))?;
-        *index += 1;
-        Ok(())
     }
 }
 

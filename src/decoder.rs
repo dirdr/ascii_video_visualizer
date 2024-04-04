@@ -1,7 +1,4 @@
-use core::panic;
-use std::fmt::Display;
-use std::sync::Arc;
-use std::thread::{self, JoinHandle};
+use std::thread;
 
 use anyhow::Result;
 use ffmpeg::format::{input, Pixel};
@@ -28,8 +25,8 @@ impl DecoderWrapper {
     pub fn start(&self) -> anyhow::Result<()> {
         let cli = Arguments::global();
         let frame_queue = GenericSharedQueue::<Frame>::global(FrameType::Input);
-        let path = cli.path.clone();
-        let mode = cli.mode.clone();
+        let _path = cli.path.clone();
+        let mode = cli.mode;
         let mut ictx = input(&format!("./resources/{}", cli.path.clone()))?;
         let worker = thread::spawn(move || -> Result<()> {
             // find the best video flux
