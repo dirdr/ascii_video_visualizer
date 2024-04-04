@@ -6,11 +6,11 @@ use once_cell::sync::OnceCell;
     name = "ascii_video_visualizer",
     about = "convert video into ascii visualisation!",
     author = "Adrien P. <adrien.pelfresne@gmail.com>",
-    version = "1.1"
+    version = "1.0.0"
 )]
 pub struct Arguments {
     /// the video path (with file extension)
-    #[arg(short, long, default_value = "cat.mp4")]
+    #[arg(short, long, default_value = "swing.mp4")]
     pub path: String,
     /// the rendering mode
     #[arg(short, long, default_value = "gray")]
@@ -40,20 +40,9 @@ pub enum DetailLevel {
     Detailed,
 }
 
-pub enum Output {
-    Play,
-    Encode,
-}
-
 pub static INSTANCE: OnceCell<Arguments> = OnceCell::new();
 
 impl Arguments {
-    pub fn get_rendering_mode() -> Output {
-        match &Arguments::global().output_path {
-            Some(_) => Output::Encode,
-            None => Output::Play,
-        }
-    }
     pub fn global() -> &'static Arguments {
         INSTANCE.get().expect("arguments are not initialized")
     }

@@ -7,6 +7,11 @@ use once_cell::sync::OnceCell;
 
 use crate::frame::{AsciiFrame, Frame, Full};
 
+pub static INPUT_FRAME_QUEUE_INSTANCE: OnceCell<GenericSharedQueue<Frame>> = OnceCell::new();
+pub static ASCII_FRAME_QUEUE_INSTANCE: OnceCell<GenericSharedQueue<AsciiFrame<Full>>> =
+    OnceCell::new();
+pub static OUTPUT_FRAME_QUEUE_INSTANCE: OnceCell<GenericSharedQueue<Frame>> = OnceCell::new();
+
 pub struct GenericSharedQueue<T>
 where
     T: Queueable,
@@ -25,6 +30,13 @@ where
             condvar: Condvar::new(),
         }
     }
+
+    /// retrieve the global shared queue for the type of frame
+    pub fn global(frame_type: FrameType) -> &'static GenericSharedQueue<T> {
+        T::queue_instance(frame_type)
+            .get()
+            .expect("Queue is not initialized")
+    }
 }
 
 pub trait Queueable {
@@ -32,11 +44,6 @@ pub trait Queueable {
     where
         Self: Sized;
 }
-
-pub static INPUT_FRAME_QUEUE_INSTANCE: OnceCell<GenericSharedQueue<Frame>> = OnceCell::new();
-pub static ASCII_FRAME_QUEUE_INSTANCE: OnceCell<GenericSharedQueue<AsciiFrame<Full>>> =
-    OnceCell::new();
-pub static OUTPUT_FRAME_QUEUE_INSTANCE: OnceCell<GenericSharedQueue<Frame>> = OnceCell::new();
 
 pub enum FrameType {
     Input,
@@ -58,16 +65,5 @@ where {
         match frame_type {
             _ => &ASCII_FRAME_QUEUE_INSTANCE,
         }
-    }
-}
-
-impl<T> GenericSharedQueue<T>
-where
-    T: Queueable,
-{
-    pub fn global(frame_type: FrameType) -> &'static GenericSharedQueue<T> {
-        T::queue_instance(frame_type)
-            .get()
-            .expect("Queue is not initialized")
     }
 }

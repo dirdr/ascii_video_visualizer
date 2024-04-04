@@ -1,7 +1,5 @@
-use anyhow::Result;
 use args::INSTANCE;
 use clap::Parser;
-use encoder::Encoder;
 use queues::{ASCII_FRAME_QUEUE_INSTANCE, INPUT_FRAME_QUEUE_INSTANCE, OUTPUT_FRAME_QUEUE_INSTANCE};
 extern crate ffmpeg_next as ffmpeg;
 extern crate pretty_env_logger;
@@ -10,7 +8,6 @@ mod args;
 mod ascii_set;
 mod converter;
 mod decoder;
-mod encoder;
 mod frame;
 mod player;
 mod queues;
@@ -47,19 +44,11 @@ fn main() -> anyhow::Result<()> {
     let decoder = DecoderWrapper::new();
     let should_stop = Arc::new(AtomicBool::new(false));
     let mut converter = FrameToAsciiFrameConverter::new(Arc::clone(&should_stop));
-    let player = Player::new(Arc::clone(&should_stop), 60);
+    let mut player = Player::new(Arc::clone(&should_stop), 60);
+
     decoder.start()?;
     converter.start()?;
-    match Arguments::get_rendering_mode() {
-        args::Output::Play => {
-            let mut player = Player::new(Arc::clone(&should_stop), 60);
-            player.start()?;
-        }
-        args::Output::Encode => {
-            let encoder = Encoder::new();
-            encoder.start()?;
-        }
-    };
+    player.start()?;
     should_stop.store(true, Ordering::Relaxed);
     Ok(())
 }
